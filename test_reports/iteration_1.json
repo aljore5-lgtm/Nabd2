@@ -1,0 +1,34 @@
+{
+  "summary": "E2E test of Nabd Student Portal (Arabic RTL). Backend 10/11 pytest passed (91%). Frontend flows fully functional: landing nav, demo autofill, login (success + wrong password Arabic error), portal renders all 16 testids, 3 Recharts SVGs (Line/Bar/Radar), AI suggestions returned real Arabic motivational message via Claude (source='ai'), logout clears nabd_student_token, /student-portal guard redirects to /student-login when unauthenticated.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/student/me (risk computation)", "issue": "S1004 (GPA 1.9, attendance 55, quiz 48, assignments 8/20) computes risk_score=51 -> 'medium', but spec explicitly requires 'high'. Need to either lower the high threshold (e.g., <55 instead of <60) or boost the weight of GPA/attendance, OR clamp risk_level='high' when gpa<2.0 or attendance<60."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_student_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Adjust compute_risk() thresholds so S1004 returns risk_level='high' as specified. Suggested fix: change `elif score < 60: level='medium' else 'high'` to `elif score < 50` OR add override: if gpa < 2.0 or attendance < 60 -> 'high'."
+  ],
+  "critical_code_review_comments": [
+    "compute_risk thresholds (30/60) don't satisfy the documented expectation in the problem statement for S1004. Add deterministic overrides for clearly failing students.",
+    "/api/student/me returns 401 for missing header but 401 with 'Invalid token' for bad token — acceptable, but consider distinguishing 403 vs 401 per RFC.",
+    "AI call timeout not explicitly set on emergentintegrations chat; rely on server default. Consider 60s asyncio.wait_for to avoid hanging requests under load.",
+    "Seed function uses count>0 to skip; if SEED_STUDENTS is edited later, students collection won't update. Consider idempotent upsert by student_id.",
+    "Bcrypt hashing in seed_students runs synchronously inside startup — acceptable for 5 students but should be wrapped in run_in_executor for larger seeds.",
+    "server.py is ~470 lines; still under 700 but consider splitting auth/seed/ai into separate modules as it grows."
+  ],
+  "updated_files": ["/app/backend/tests/test_student_api.py"],
+  "success_rate": {"backend": "91% (10/11)", "frontend": "100% of flows tested"},
+  "test_credentials": "Student IDs S1001-S1005 / password nabd1234. Added these to /app/memory/test_credentials.md context (not modified file).",
+  "seed_data_creation": "Used existing seeded students (5 students inserted on startup by seed_students()).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All UI testids work. Use domcontentloaded (NOT networkidle) for waits — networkidle never settles due to long-polling websockets. After login, wait for [data-testid=profile-card] before checking other testids since portal fetches /api/student/me before rendering. AI endpoint takes ~30-50s — use timeout >=60s.",
+  "rca_of_the_issue": "S1004 weighted risk: 0.4*52.5 + 0.3*45 + 0.2*52 + 0.1*60 = 50.9 -> medium. Threshold for 'high' is <60 which is too lenient given the weighting. Recommended: lower 'high' threshold to 50 OR add gpa<2.0 override."
+}
