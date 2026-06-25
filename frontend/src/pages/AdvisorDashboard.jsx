@@ -110,7 +110,7 @@ export default function AdvisorDashboard() {
               <ResponsiveContainer>
                 <PieChart>
                   <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={3}>
-                    {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                    {pieData.map((d) => <Cell key={d.name} fill={d.color} />)}
                   </Pie>
                   <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #ecebf3", fontFamily: "Tajawal" }} />
                   <Legend />

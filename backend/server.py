@@ -160,6 +160,8 @@ def compute_risk(gpa: float, attendance: float, quiz_avg: float, assignments_rat
     assn_risk = max(0.0, (1 - assignments_ratio) * 100)
     score = round(0.40 * gpa_risk + 0.30 * att_risk + 0.20 * quiz_risk + 0.10 * assn_risk)
     score = max(0, min(100, score))
+    # Default before classification — guarantees `level` is always defined.
+    level = "medium"
     # Deterministic overrides for clearly failing students
     if gpa < 2.0 or attendance < 60:
         level = "high"
@@ -167,8 +169,6 @@ def compute_risk(gpa: float, attendance: float, quiz_avg: float, assignments_rat
         level = "medium"
     elif score < 30:
         level = "low"
-    else:
-        level = "medium"
     return level, score
 
 

@@ -3,9 +3,21 @@ import os
 import time
 import pytest
 import requests
+from dotenv import load_dotenv
 
-BASE_URL = (os.environ.get('REACT_APP_BACKEND_URL') or 'https://student-portal-1115.preview.emergentagent.com').rstrip('/')
+# Load env vars from /app/frontend/.env (REACT_APP_BACKEND_URL) and /app/backend/.env
+load_dotenv("/app/frontend/.env")
+load_dotenv("/app/backend/.env")
+
+BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or "").rstrip("/")
+if not BASE_URL:
+    raise RuntimeError("REACT_APP_BACKEND_URL must be set in /app/frontend/.env")
 API = f"{BASE_URL}/api"
+
+# Test credentials — load from env, with seed-data defaults so tests stay runnable
+TEST_STUDENT_PASSWORD = os.environ.get("TEST_STUDENT_PASSWORD", "nabd1234")
+TEST_ADVISOR_USERNAME = os.environ.get("TEST_ADVISOR_USERNAME", "advisor")
+TEST_ADVISOR_PASSWORD = os.environ.get("TEST_ADVISOR_PASSWORD", "nabd1234")
 
 
 # ============ Fixtures ============
@@ -17,13 +29,16 @@ def session():
     return s
 
 
-def _login_student(session, sid, password="nabd1234"):
+def _login_student(session, sid, password=None):
+    password = password or TEST_STUDENT_PASSWORD
     r = session.post(f"{API}/student/login", json={"student_id": sid, "password": password})
     assert r.status_code == 200, f"Login {sid} failed: {r.text}"
     return r.json()["token"]
 
 
-def _login_advisor(session, username="advisor", password="nabd1234"):
+def _login_advisor(session, username=None, password=None):
+    username = username or TEST_ADVISOR_USERNAME
+    password = password or TEST_ADVISOR_PASSWORD
     r = session.post(f"{API}/advisor/login", json={"username": username, "password": password})
     assert r.status_code == 200, f"Advisor login failed: {r.text}"
     return r.json()["token"]

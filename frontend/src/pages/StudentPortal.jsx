@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { fetchMe, fetchAISuggestions, auth, fetchMyInterventions } from "@/lib/api";
+import { devLog } from "@/lib/logger";
+import { gradeColor, priorityChip, priorityLabel, statusChip, statusLabel } from "@/lib/academic";
 import StudentChatbot from "@/components/StudentChatbot";
 import {
   LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -39,7 +41,7 @@ export default function StudentPortal() {
           const r = await fetchMyInterventions();
           setInterventions(r.interventions || []);
         } catch (e) {
-          console.warn("interventions load failed", e);
+          devLog.warn("interventions load failed", e);
         }
       } catch {
         auth.clear();
@@ -244,7 +246,7 @@ export default function StudentPortal() {
             <SectionHeader title="تفاصيل المقررات" subtitle="الدرجة والوحدات المعتمدة" icon={<BookOpen size={18} />} />
             <div className="space-y-3">
               {profile.courses.map((c) => {
-                const color = c.grade >= 80 ? "#10b981" : c.grade >= 60 ? "#f59e0b" : "#ef4444";
+                const color = gradeColor(c.grade);
                 return (
                   <div key={c.code} className="flex items-center gap-3 p-3 rounded-xl bg-[#fbfaff] border border-[var(--nabd-border)]">
                     <div className="flex-1">
@@ -276,10 +278,10 @@ export default function StudentPortal() {
             </div>
             <div className="grid md:grid-cols-2 gap-3">
               {interventions.map((it) => {
-                const pColor = it.priority === "high" ? "chip-danger" : it.priority === "medium" ? "chip-warn" : "chip-success";
-                const sColor = it.status === "done" ? "chip-success" : it.status === "in_progress" ? "chip-purple" : "chip-warn";
-                const sLabel = it.status === "done" ? "مكتمل" : it.status === "in_progress" ? "قيد التنفيذ" : "بانتظار";
-                const pLabel = it.priority === "high" ? "عالية" : it.priority === "medium" ? "متوسطة" : "منخفضة";
+                const pColor = priorityChip(it.priority);
+                const sColor = statusChip(it.status);
+                const sLabel = statusLabel(it.status);
+                const pLabel = priorityLabel(it.priority);
                 return (
                   <div key={it.id} className="p-4 rounded-2xl bg-white border border-[var(--nabd-border)]" data-testid={`student-intervention-${it.id}`}>
                     <div className="flex items-start justify-between gap-2 mb-2">
@@ -360,13 +362,13 @@ export default function StudentPortal() {
                   <div className="p-4 rounded-2xl border border-emerald-100 bg-emerald-50/50">
                     <div className="font-extrabold text-emerald-700 mb-2 flex items-center gap-2"><CheckCircle2 size={18} /> نقاط القوة</div>
                     <ul className="space-y-1.5 text-sm">
-                      {ai.data.strengths?.map((s, i) => <li key={i} className="flex gap-2"><span>•</span>{s}</li>)}
+                      {ai.data.strengths?.map((s, i) => <li key={`str-${i}-${s.slice(0, 12)}`} className="flex gap-2"><span>•</span>{s}</li>)}
                     </ul>
                   </div>
                   <div className="p-4 rounded-2xl border border-rose-100 bg-rose-50/50">
                     <div className="font-extrabold text-rose-700 mb-2 flex items-center gap-2"><AlertTriangle size={18} /> تحديات يجب معالجتها</div>
                     <ul className="space-y-1.5 text-sm">
-                      {ai.data.risks?.map((s, i) => <li key={i} className="flex gap-2"><span>•</span>{s}</li>)}
+                      {ai.data.risks?.map((s, i) => <li key={`risk-${i}-${s.slice(0, 12)}`} className="flex gap-2"><span>•</span>{s}</li>)}
                     </ul>
                   </div>
                 </div>
@@ -375,10 +377,10 @@ export default function StudentPortal() {
                   <div className="font-extrabold mb-3 flex items-center gap-2"><Target size={18} className="text-[var(--nabd-primary)]" /> توصيات عملية</div>
                   <div className="grid md:grid-cols-2 gap-3">
                     {ai.data.recommendations?.map((r, i) => {
-                      const p = r.priority === "high" ? "chip-danger" : r.priority === "medium" ? "chip-warn" : "chip-success";
-                      const pl = r.priority === "high" ? "عالية" : r.priority === "medium" ? "متوسطة" : "منخفضة";
+                      const p = priorityChip(r.priority);
+                      const pl = priorityLabel(r.priority);
                       return (
-                        <div key={i} className="p-4 rounded-2xl bg-white border border-[var(--nabd-border)]" data-testid={`ai-rec-${i}`}>
+                        <div key={`${r.title}-${i}`} className="p-4 rounded-2xl bg-white border border-[var(--nabd-border)]" data-testid={`ai-rec-${i}`}>
                           <div className="flex items-center justify-between mb-2">
                             <div className="font-bold">{r.title}</div>
                             <span className={`chip ${p}`}>{pl}</span>
@@ -394,7 +396,7 @@ export default function StudentPortal() {
                   <div className="font-extrabold mb-3 flex items-center gap-2"><Clock size={18} className="text-[var(--nabd-primary)]" /> خطة الأسبوع</div>
                   <ol className="grid md:grid-cols-2 gap-2 text-sm">
                     {ai.data.weekly_plan?.map((step, i) => (
-                      <li key={i} className="flex gap-3 p-3 rounded-xl bg-[#fbfaff] border border-[var(--nabd-border)]">
+                      <li key={`plan-${i}-${step.slice(0, 12)}`} className="flex gap-3 p-3 rounded-xl bg-[#fbfaff] border border-[var(--nabd-border)]">
                         <span className="w-6 h-6 rounded-full bg-[var(--nabd-primary)] text-white flex items-center justify-center text-xs font-extrabold flex-shrink-0">{i + 1}</span>
                         <span>{step}</span>
                       </li>

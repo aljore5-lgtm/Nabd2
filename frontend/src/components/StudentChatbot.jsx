@@ -1,12 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { fetchChatHistory, sendChatMessage, clearChatHistory } from "@/lib/api";
-import { MessageCircle, X, Send, Sparkles, Loader2, RefreshCw, Bot, User as UserIcon } from "lucide-react";
+import { devLog } from "@/lib/logger";
+import { X, Send, Sparkles, Loader2, RefreshCw, Bot, User as UserIcon } from "lucide-react";
 
 const QUICK_PROMPTS = [
-  "كيف يمكنني تحسين معدلي؟",
-  "ما الذي يجعل مستوى مخاطرتي بهذا الشكل؟",
-  "اقترح خطة مذاكرة لهذا الأسبوع",
-  "ما هي المقررات التي يجب أن أركّز عليها؟",
+  { id: "qp-improve-gpa", text: "كيف يمكنني تحسين معدلي؟" },
+  { id: "qp-why-risk", text: "ما الذي يجعل مستوى مخاطرتي بهذا الشكل؟" },
+  { id: "qp-study-plan", text: "اقترح خطة مذاكرة لهذا الأسبوع" },
+  { id: "qp-focus-courses", text: "ما هي المقررات التي يجب أن أركّز عليها؟" },
 ];
 
 export default function StudentChatbot({ studentName = "" }) {
@@ -16,31 +17,32 @@ export default function StudentChatbot({ studentName = "" }) {
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
   const scrollRef = useRef(null);
+
+  const loadHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const r = await fetchChatHistory();
+      setMessages(r.messages || []);
+    } catch (e) {
+      devLog.warn("load history failed", e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (open && messages.length === 0) {
       loadHistory();
     }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, messages.length, loadHistory]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, loading]);
-
-  async function loadHistory() {
-    setLoadingHistory(true);
-    try {
-      const r = await fetchChatHistory();
-      setMessages(r.messages || []);
-    } catch (e) {
-      console.warn("load history failed", e);
-    } finally {
-      setLoadingHistory(false);
-    }
-  }
 
   async function send(text) {
     const msg = (text ?? input).trim();
@@ -60,8 +62,6 @@ export default function StudentChatbot({ studentName = "" }) {
     }
   }
 
-  const [confirmClear, setConfirmClear] = useState(false);
-
   async function clearAll() {
     if (!confirmClear) {
       setConfirmClear(true);
@@ -73,7 +73,7 @@ export default function StudentChatbot({ studentName = "" }) {
       await clearChatHistory();
       setMessages([]);
     } catch (e) {
-      console.error("clear chat failed", e);
+      devLog.error("clear chat failed", e);
     }
   }
 
@@ -137,12 +137,12 @@ export default function StudentChatbot({ studentName = "" }) {
               <div className="grid gap-2">
                 {QUICK_PROMPTS.map((q, i) => (
                   <button
-                    key={i}
-                    onClick={() => send(q)}
+                    key={q.id}
+                    onClick={() => send(q.text)}
                     className="text-sm text-right px-4 py-2.5 rounded-xl border border-[var(--nabd-border)] bg-white hover:border-[var(--nabd-primary)] hover:bg-[#f5f3ff] transition"
                     data-testid={`quick-prompt-${i}`}
                   >
-                    {q}
+                    {q.text}
                   </button>
                 ))}
               </div>
