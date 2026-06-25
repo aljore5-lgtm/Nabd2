@@ -153,3 +153,10 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: #d8d4ea; border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: #b5aed6; }
+
+/* Hide Emergent branding badge */
+.made-with-emergent,
+a[href*="emergent"][class*="made"],
+#made-with-emergent {
+  display: none !important;
+}
