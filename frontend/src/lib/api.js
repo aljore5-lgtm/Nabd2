@@ -88,6 +88,41 @@ export async function fetchMyInterventions() {
   return data;
 }
 
+export async function fetchAchievements() {
+  const { data } = await api.get("/student/achievements");
+  return data;
+}
+
+export async function fetchComparison() {
+  const { data } = await api.get("/student/comparison");
+  return data;
+}
+
+export async function bookAppointment(payload) {
+  const { data } = await api.post("/student/appointments", payload);
+  return data;
+}
+
+export async function fetchMyAppointments() {
+  const { data } = await api.get("/student/appointments");
+  return data;
+}
+
+export async function cancelAppointment(id) {
+  const { data } = await api.delete(`/student/appointments/${id}`);
+  return data;
+}
+
+export async function fetchAdvisorAppointments() {
+  const { data } = await advisorApi.get("/advisor/appointments");
+  return data;
+}
+
+export async function updateAppointmentStatus(id, status, advisor_note) {
+  const { data } = await advisorApi.patch(`/advisor/appointments/${id}`, { status, advisor_note });
+  return data;
+}
+
 // ---- Advisor ----
 export async function advisorLogin(username, password) {
   const { data } = await advisorApi.post("/advisor/login", { username, password });

@@ -784,6 +784,223 @@ async def contact_message(body: ContactMessageIn):
     return {"ok": True, "message": doc}
 
 
+# ============================================================
+# Achievements / Badges (computed from profile)
+# ============================================================
+def _compute_achievements(p: StudentProfile) -> List[dict]:
+    assn_ratio = (p.assignments_completed / p.assignments_total) if p.assignments_total else 0
+    trend_delta = 0.0
+    if len(p.trends) >= 2:
+        trend_delta = p.trends[-1].gpa - p.trends[0].gpa
+
+    defs = [
+        {"id": "perfect_attendance", "icon": "calendar", "color": "#10b981",
+         "title": "حضور مثالي", "desc": "حضور 95% أو أعلى",
+         "threshold": 95, "value": p.attendance, "unit": "%"},
+        {"id": "honor_gpa", "icon": "award", "color": "#6d4dff",
+         "title": "قائمة الشرف", "desc": "معدل تراكمي 3.5 أو أعلى",
+         "threshold": 3.5, "value": p.gpa, "unit": "/4"},
+        {"id": "quiz_champion", "icon": "target", "color": "#f59e0b",
+         "title": "بطل الكويزات", "desc": "متوسط 85% أو أعلى",
+         "threshold": 85, "value": p.quiz_avg, "unit": "%"},
+        {"id": "homework_hero", "icon": "book", "color": "#0ea5e9",
+         "title": "ملتزم بالواجبات", "desc": "إنجاز 95% من الواجبات",
+         "threshold": 95, "value": assn_ratio * 100, "unit": "%"},
+        {"id": "study_warrior", "icon": "clock", "color": "#a855f7",
+         "title": "مذاكر مجدّ", "desc": "15 ساعة مذاكرة أسبوعياً",
+         "threshold": 15, "value": p.study_hours_weekly, "unit": "س"},
+        {"id": "rising_star", "icon": "trending-up", "color": "#ec4899",
+         "title": "نجم صاعد", "desc": "تحسّن في المعدل بين الفصول",
+         "threshold": 0.1, "value": trend_delta, "unit": "نقطة"},
+        {"id": "low_risk", "icon": "shield", "color": "#14b8a6",
+         "title": "مسار آمن", "desc": "مستوى مخاطرة منخفض",
+         "threshold": 70, "value": 100 - p.risk_score, "unit": "%"},
+    ]
+
+    out = []
+    for d in defs:
+        earned = d["value"] >= d["threshold"]
+        progress = 0
+        if d["threshold"] > 0:
+            progress = max(0, min(100, round((d["value"] / d["threshold"]) * 100)))
+        out.append({
+            "id": d["id"],
+            "title": d["title"],
+            "desc": d["desc"],
+            "icon": d["icon"],
+            "color": d["color"],
+            "earned": bool(earned),
+            "progress": progress,
+            "value": round(float(d["value"]), 2),
+            "threshold": d["threshold"],
+            "unit": d["unit"],
+        })
+    return out
+
+
+@api_router.get("/student/achievements")
+async def get_achievements(student=Depends(get_current_student)):
+    p = build_profile(student)
+    items = _compute_achievements(p)
+    earned = sum(1 for x in items if x["earned"])
+    return {"earned": earned, "total": len(items), "items": items}
+
+
+# ============================================================
+# Peer Comparison
+# ============================================================
+@api_router.get("/student/comparison")
+async def peer_comparison(student=Depends(get_current_student)):
+    p = build_profile(student)
+    cursor = db.students.find({}, {"_id": 0, "password_hash": 0})
+    everyone = await cursor.to_list(1000)
+    if not everyone:
+        raise HTTPException(status_code=500, detail="No peers found")
+
+    def avg(items, key, default=0):
+        vals = [x.get(key, default) for x in items]
+        return sum(vals) / len(vals) if vals else 0
+
+    cohort = [x for x in everyone if x.get("major") == p.major] or everyone
+    sorted_by_gpa = sorted(everyone, key=lambda x: -x.get("gpa", 0))
+    top_count = max(1, len(sorted_by_gpa) // 5)
+    top = sorted_by_gpa[:top_count]
+
+    def metric(label, key, your_value, multiplier=1):
+        peer_avg = avg(everyone, key) * multiplier
+        cohort_avg = avg(cohort, key) * multiplier
+        top_avg = avg(top, key) * multiplier
+        better_or_equal = sum(1 for x in everyone if (x.get(key, 0) * multiplier) <= your_value)
+        percentile = round((better_or_equal / len(everyone)) * 100)
+        return {
+            "label": label, "key": key,
+            "you": round(float(your_value), 2),
+            "peers_avg": round(float(peer_avg), 2),
+            "cohort_avg": round(float(cohort_avg), 2),
+            "top_avg": round(float(top_avg), 2),
+            "percentile": percentile,
+        }
+
+    assn_ratio = (p.assignments_completed / max(1, p.assignments_total)) * 100
+    metrics = [
+        metric("المعدل التراكمي", "gpa", p.gpa),
+        metric("نسبة الحضور", "attendance", p.attendance),
+        metric("متوسط الكويزات", "quiz_avg", p.quiz_avg),
+        metric("ساعات المذاكرة", "study_hours_weekly", p.study_hours_weekly),
+    ]
+    def assn_pct(items):
+        nums = [x.get("assignments_completed", 0) / max(1, x.get("assignments_total", 1)) * 100 for x in items]
+        return sum(nums) / len(nums) if nums else 0
+    metrics.append({
+        "label": "إنجاز الواجبات", "key": "assignments_ratio",
+        "you": round(assn_ratio, 1),
+        "peers_avg": round(assn_pct(everyone), 1),
+        "cohort_avg": round(assn_pct(cohort), 1),
+        "top_avg": round(assn_pct(top), 1),
+        "percentile": round(sum(
+            1 for x in everyone
+            if (x.get("assignments_completed", 0) / max(1, x.get("assignments_total", 1)) * 100) <= assn_ratio
+        ) / len(everyone) * 100),
+    })
+
+    return {
+        "cohort": p.major,
+        "cohort_size": len(cohort),
+        "total_peers": len(everyone),
+        "metrics": metrics,
+    }
+
+
+# ============================================================
+# Appointments (Student ↔ Advisor)
+# ============================================================
+class AppointmentIn(BaseModel):
+    scheduled_at: str  # ISO datetime string
+    duration_min: int = 30
+    mode: str = "online"  # online | onsite
+    reason: str
+
+
+class AppointmentStatusIn(BaseModel):
+    status: str  # pending | confirmed | rejected | completed | cancelled
+    advisor_note: Optional[str] = None
+
+
+def _validate_appointment_status(status: str):
+    if status not in ("pending", "confirmed", "rejected", "completed", "cancelled"):
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+
+@api_router.post("/student/appointments")
+async def book_appointment(body: AppointmentIn, student=Depends(get_current_student)):
+    if body.mode not in ("online", "onsite"):
+        raise HTTPException(status_code=400, detail="Invalid mode")
+    if body.duration_min not in (15, 30, 45, 60):
+        raise HTTPException(status_code=400, detail="Invalid duration")
+    if not body.reason.strip():
+        raise HTTPException(status_code=400, detail="السبب مطلوب")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "student_id": student["student_id"],
+        "student_name": student["name"],
+        "advisor_username": SEED_ADVISOR["username"],
+        "scheduled_at": body.scheduled_at,
+        "duration_min": body.duration_min,
+        "mode": body.mode,
+        "reason": body.reason.strip(),
+        "status": "pending",
+        "advisor_note": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.appointments.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.get("/student/appointments")
+async def list_my_appointments(student=Depends(get_current_student)):
+    cursor = db.appointments.find({"student_id": student["student_id"]}, {"_id": 0}).sort("scheduled_at", -1)
+    items = await cursor.to_list(500)
+    return {"appointments": items}
+
+
+@api_router.delete("/student/appointments/{appointment_id}")
+async def cancel_my_appointment(appointment_id: str, student=Depends(get_current_student)):
+    res = await db.appointments.update_one(
+        {"id": appointment_id, "student_id": student["student_id"], "status": {"$in": ["pending", "confirmed"]}},
+        {"$set": {"status": "cancelled", "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Appointment not found or not cancellable")
+    doc = await db.appointments.find_one({"id": appointment_id}, {"_id": 0})
+    return doc
+
+
+@api_router.get("/advisor/appointments")
+async def list_advisor_appointments(advisor=Depends(get_current_advisor)):
+    cursor = db.appointments.find({"advisor_username": advisor["username"]}, {"_id": 0}).sort("scheduled_at", 1)
+    items = await cursor.to_list(500)
+    return {"appointments": items}
+
+
+@api_router.patch("/advisor/appointments/{appointment_id}")
+async def update_appointment_status(appointment_id: str, body: AppointmentStatusIn, advisor=Depends(get_current_advisor)):
+    _validate_appointment_status(body.status)
+    update = {"status": body.status, "updated_at": datetime.now(timezone.utc).isoformat()}
+    if body.advisor_note is not None:
+        update["advisor_note"] = body.advisor_note
+    res = await db.appointments.update_one(
+        {"id": appointment_id, "advisor_username": advisor["username"]},
+        {"$set": update},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    doc = await db.appointments.find_one({"id": appointment_id}, {"_id": 0})
+    return doc
+
+
+
 
 app.include_router(api_router)
 

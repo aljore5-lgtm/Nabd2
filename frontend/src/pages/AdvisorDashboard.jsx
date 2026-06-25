@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { fetchAdvisorStudents, advisorAuth } from "@/lib/api";
+import { fetchAdvisorStudents, advisorAuth, fetchAdvisorAppointments, updateAppointmentStatus } from "@/lib/api";
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
-import { LogOut, Users, TrendingUp, Search, ShieldAlert, ShieldCheck, ShieldQuestion, ChevronLeft, GraduationCap } from "lucide-react";
+import { LogOut, Users, TrendingUp, Search, ShieldAlert, ShieldCheck, ShieldQuestion, ChevronLeft, GraduationCap, CalendarClock, Video, MapPin, Check, X as XIcon } from "lucide-react";
 
 const riskTheme = {
   low: { label: "منخفضة", chip: "chip-success", color: "#10b981", bg: "#e7f8f1", text: "#047857" },
@@ -18,6 +18,7 @@ export default function AdvisorDashboard() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
+  const [appointments, setAppointments] = useState([]);
 
   useEffect(() => {
     if (!advisorAuth.token) {
@@ -27,6 +28,10 @@ export default function AdvisorDashboard() {
     (async () => {
       try {
         setData(await fetchAdvisorStudents());
+        try {
+          const r = await fetchAdvisorAppointments();
+          setAppointments(r.appointments || []);
+        } catch (_) { /* empty */ }
       } catch {
         advisorAuth.clear();
         navigate("/advisor-login", { replace: true });
@@ -35,6 +40,13 @@ export default function AdvisorDashboard() {
       }
     })();
   }, [navigate]);
+
+  async function setApptStatus(id, status) {
+    try {
+      const upd = await updateAppointmentStatus(id, status);
+      setAppointments((prev) => prev.map((a) => (a.id === id ? upd : a)));
+    } catch (_) { /* empty */ }
+  }
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -135,6 +147,73 @@ export default function AdvisorDashboard() {
               </ResponsiveContainer>
             </div>
           </div>
+        </section>
+
+        {/* Appointments queue */}
+        <section className="nabd-card p-7 fade-up" data-testid="advisor-appointments-section">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+            <div>
+              <span className="chip chip-purple"><CalendarClock size={14} /> طلبات المواعيد</span>
+              <h2 className="text-2xl font-black mt-2">طلبات الحجز من الطلاب</h2>
+              <p className="text-sm text-[var(--nabd-text-soft)] mt-1">راجع المواعيد المطلوبة وأكدها أو رفضها.</p>
+            </div>
+            <div className="text-sm font-bold text-[var(--nabd-text-soft)]">
+              {appointments.filter((a) => a.status === "pending").length} بانتظار التأكيد
+            </div>
+          </div>
+          {appointments.length === 0 ? (
+            <div className="text-center py-6 text-[var(--nabd-text-soft)] text-sm" data-testid="advisor-appointments-empty">
+              <CalendarClock size={28} className="mx-auto mb-2 opacity-40" />
+              لا توجد طلبات حالياً.
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-3" data-testid="advisor-appointments-list">
+              {appointments.map((a) => {
+                const dt = new Date(a.scheduled_at);
+                const isPending = a.status === "pending";
+                const chip = a.status === "confirmed" ? "chip-success"
+                  : a.status === "rejected" || a.status === "cancelled" ? "chip-danger"
+                  : a.status === "completed" ? "chip-purple"
+                  : "chip-warn";
+                const statusLabel = a.status === "confirmed" ? "مؤكد"
+                  : a.status === "rejected" ? "مرفوض"
+                  : a.status === "completed" ? "مكتمل"
+                  : a.status === "cancelled" ? "ملغى"
+                  : "بانتظار";
+                return (
+                  <div key={a.id} className="p-4 rounded-2xl border border-[var(--nabd-border)] bg-white" data-testid={`advisor-appt-${a.id}`}>
+                    <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
+                      <div>
+                        <div className="font-bold">{a.student_name} <span className="text-xs text-[var(--nabd-text-soft)] font-normal">({a.student_id})</span></div>
+                        <div className="text-xs text-[var(--nabd-text-soft)] mt-1 inline-flex items-center gap-2">
+                          {a.mode === "online" ? <Video size={12} /> : <MapPin size={12} />}
+                          {dt.toLocaleString("ar-EG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          · {a.duration_min} دق
+                        </div>
+                      </div>
+                      <span className={`chip ${chip}`}>{statusLabel}</span>
+                    </div>
+                    <p className="text-sm text-[var(--nabd-text-soft)] leading-relaxed mb-3">{a.reason}</p>
+                    {isPending && (
+                      <div className="flex gap-2">
+                        <button onClick={() => setApptStatus(a.id, "confirmed")} className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition" data-testid={`confirm-appt-${a.id}`}>
+                          <Check size={14} /> تأكيد
+                        </button>
+                        <button onClick={() => setApptStatus(a.id, "rejected")} className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-bold bg-white border border-red-200 text-red-600 hover:bg-red-50 transition" data-testid={`reject-appt-${a.id}`}>
+                          <XIcon size={14} /> رفض
+                        </button>
+                      </div>
+                    )}
+                    {a.status === "confirmed" && (
+                      <button onClick={() => setApptStatus(a.id, "completed")} className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-bold bg-[var(--nabd-primary)] text-white hover:opacity-90 transition" data-testid={`complete-appt-${a.id}`}>
+                        <Check size={14} /> تم تنفيذ الموعد
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* Filters */}

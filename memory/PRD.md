@@ -3,63 +3,63 @@
 ## Original problem statement
 Nabd (نبض) is an Arabic-RTL academic early-warning AI platform for universities. Add to the existing platform without modifying current design/structure:
 1. Student Portal — student login, profile, GPA, risk level (low/medium/high), attendance %, performance analytics, progress charts, personalized recommendations.
-2. AI Student Assistant chatbot accessible from Student Portal.
-3. Academic Advisor Dashboard — view at-risk students, review performance, add intervention plans, track progress.
+2. AI Student Assistant chatbot accessible from Student Portal (with voice input).
+3. Academic Advisor Dashboard — view at-risk students, review performance, add intervention plans, track progress, manage appointments.
 4. Contact section with developer info: **Aljory Mohammed Alaboud**, project **Nabd Assistant**.
+5. Engagement features: achievements/badges, peer comparison, GPA what-if calculator, appointment booking.
 
 ## User personas
-- **Student** — logs into the Student Portal to monitor academic health, get AI-generated recommendations, and chat with the AI assistant.
-- **Academic Advisor** — uses the Advisor Dashboard to monitor all students, identify at-risk students, and log intervention plans.
-- **Visitor / Prospect** — explores landing page, learns about the platform, can reach the contact page.
+- **Student** — uses Student Portal to monitor academic health, earn badges, compare with peers, simulate GPA, book advisor appointments, chat with AI via text or voice.
+- **Academic Advisor** — uses Advisor Dashboard to monitor all students, identify at-risk students, manage appointment requests, log intervention plans.
+- **Visitor / Prospect** — explores landing page, reaches contact page.
 
 ## Architecture
-- **Frontend**: React 19 + React Router, Tailwind CSS, Recharts, Lucide icons. Arabic RTL throughout. Font: Tajawal.
-- **Backend**: FastAPI (Python) + MongoDB (motor) + JWT (PyJWT) + bcrypt. AI via emergentintegrations (Claude Sonnet 4.5).
-- **AI**: Emergent LLM Key — Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`) for both `/api/student/ai-suggestions` and `/api/student/chat`. Per-student stable session_id for chat memory.
-- **Storage**: collections — `students`, `advisors`, `interventions`, `chat_messages`, `contact_messages`, `status_checks`.
+- **Frontend**: React 19, React Router, Tailwind CSS, Recharts, Lucide. Arabic RTL. Font: Tajawal.
+- **Backend**: FastAPI + Motor + PyJWT + bcrypt. AI via emergentintegrations (Claude Sonnet 4.5).
+- **Voice input**: Web Speech API (`webkitSpeechRecognition`, lang `ar-SA`) — browser-native, no extra backend.
+- **Storage**: MongoDB collections — `students`, `advisors`, `interventions`, `chat_messages`, `appointments`, `contact_messages`, `status_checks`.
 
-## Core requirements (static)
-- Arabic-first RTL UI matching the original Nabd visual identity (light theme, purple/violet `#6d4dff`, soft cards).
-- Risk computation deterministic with override: `gpa < 2.0 OR attendance < 60 → high`.
-- Bilingual support optional. All UI strings currently Arabic.
-- Endpoints under `/api` prefix.
-- All env variables from `.env`. No hardcoding.
+## Core requirements
+- Arabic-first RTL UI; primary color `#6d4dff`.
+- Risk: `gpa < 2.0 OR attendance < 60 → high`.
+- All endpoints under `/api`; env vars only (no hardcoding).
+- Per-student stable session_id for chat memory.
 
-## Implemented (Jun 2026)
-**Session 1 — Student Portal MVP**
-- Student login (S1001..S1005 / `nabd1234`) with JWT.
-- Student dashboard: profile card, risk card with score 0-100, KPIs (GPA, attendance, quiz avg, assignments), Line chart (trends), Bar chart (courses), Radar chart (performance), courses list.
-- AI Suggestions section (`POST /api/student/ai-suggestions`) — Claude Sonnet 4.5; rule-based fallback if AI fails.
-- Landing page + login routes.
+## Implemented timeline
+
+**Session 1 — Student Portal MVP (Jun 2026)**
+- Student login (S1001..S1005 / `nabd1234`), JWT, profile + KPIs + Line/Bar/Radar charts, AI suggestions (Claude Sonnet 4.5 + rule fallback), landing/contact-light.
 
 **Session 2 — Advisor + Chatbot + Contact**
-- Academic Advisor login (`advisor` / `nabd1234`) — separate JWT (role="advisor").
-- Advisor dashboard with stats (total / high / medium / avg GPA), pie chart of risk distribution, bar chart of risk vs GPA, searchable + filterable student list sorted by risk_score desc.
-- Advisor student detail with profile, trends/courses charts, intervention CRUD (title, note, priority, due_date, status: pending/in_progress/done).
-- Student-side read-only view of advisor interventions on `/student-portal`.
-- AI Chatbot floating launcher on Student Portal — Claude Sonnet 4.5 with persistent history (`chat_messages` collection), 4 quick prompts, clear-history (double-tap confirm), per-student session memory.
-- Contact section on Landing (#contact) + dedicated `/contact` page with `Aljory Mohammed Alaboud` and `Nabd Assistant`. Public contact-message endpoint.
-- Risk override fix — S1004 now correctly flagged HIGH (was MEDIUM in iter 1).
-- Tested: 31/31 backend tests pass; all major frontend flows verified.
+- Advisor login (`advisor` / `nabd1234`), advisor dashboard with stats + risk distribution + searchable list, advisor student detail with intervention CRUD (priority, due_date, status). Floating AI chatbot (Claude Sonnet 4.5, persistent history). `/contact` page + landing contact section.
 
-## What's been implemented
-- Backend (`/app/backend/server.py`):
-  - Students: `/student/login`, `/student/me`, `/student/demo-credentials`, `/student/ai-suggestions`, `/student/interventions`.
-  - Chat: `/student/chat` (POST), `/student/chat/history` (GET, DELETE).
-  - Advisor: `/advisor/login`, `/advisor/me`, `/advisor/students`, `/advisor/student/{id}`, `/advisor/intervention` (POST), `/advisor/student/{id}/interventions`, `/advisor/intervention/{id}` (PATCH).
-  - Contact: `/contact` (GET info), `/contact/message` (POST).
-- Frontend pages: `Landing`, `StudentLogin`, `StudentPortal`, `AdvisorLogin`, `AdvisorDashboard`, `AdvisorStudentDetail`, `Contact`. Component: `StudentChatbot`.
+**Session 3 — Code Quality (post-review)**
+- Test credentials moved to env. `compute_risk` defensively initialized. `useCallback` for hook deps. Stable React keys (no array-index). Nested ternaries extracted to `/lib/academic.js`. Console statements gated by `/lib/logger.js` (`devLog`). All lint clean, 20/20 backend tests pass.
 
-## Prioritized backlog (P0/P1/P2)
-- P1: Refactor `server.py` into modules (`auth.py`, `ai.py`, `advisor_routes.py`, `student_routes.py`, `contact_routes.py`) — file is ~800 lines.
-- P1: Reset AI session memory after chat history delete (currently only Mongo is cleared).
-- P2: Email notification when advisor adds an intervention to a student.
-- P2: Advisor analytics over time (interventions completed, GPA delta after intervention).
-- P2: Bilingual EN/AR toggle for new pages (currently AR-only).
-- P2: Suppress Recharts `width(-1)` console warnings (cosmetic).
-- P2: Return plain arrays from list endpoints instead of `{interventions: [...]}` wrapper.
+**Session 4 — Engagement features (current)**
+- 🏆 **Achievements**: 7 computed badges (perfect attendance, honor GPA, quiz champion, homework hero, study warrior, rising star, low risk) with earned/locked state and progress bars.
+- 📊 **Peer comparison**: aggregated metrics (gpa, attendance, quiz, study hrs, assignments ratio) vs cohort/top-20%. Percentile + insight text. Bar chart + KPI cards.
+- 🧮 **GPA What-if calculator**: client-side, weighted GPA from credits + grades, supports editing existing courses and adding hypothetical ones. Shows delta vs current GPA.
+- 🗓️ **Appointments**: student books with date/duration/mode/reason; advisor sees queue, can Confirm/Reject/Complete; student can cancel pending/confirmed.
+- 🎤 **Voice input for chatbot**: Web Speech API (`ar-SA`); mic toggle with animation; auto-fills text input; graceful fallback if unsupported.
+- Backend endpoints added: `/student/achievements`, `/student/comparison`, `/student/appointments` (POST/GET/DELETE), `/advisor/appointments` (GET/PATCH).
 
-## Next tasks
-1. Optionally split `server.py` and add tests for the refactor.
-2. Consider an admin role (institution-level dashboard aggregating multiple advisors).
-3. Wire up the existing landing-page voice bot CTA (currently feature card only).
+## Backlog (P0/P1/P2)
+- P1: Refactor `server.py` (~1000+ lines) into modules.
+- P1: Reset AI chat session memory after history delete (currently only Mongo is cleared).
+- P1: Migrate auth from `localStorage` → `httpOnly` cookies (touches CORS + CSRF).
+- P2: Email/SMS notification when advisor confirms appointment or adds intervention.
+- P2: Whisper STT fallback for browsers without Web Speech API.
+- P2: Advisor analytics over time (GPA delta after intervention).
+- P2: Bilingual EN/AR toggle.
+- P2: TypeScript migration.
+
+## Test credentials
+- Students: `S1001..S1005` / `nabd1234`
+- Advisor: `advisor` / `nabd1234`
+
+## Frontend routes
+- `/` and `/dashboard` — Landing
+- `/student-login`, `/student-portal`
+- `/advisor-login`, `/advisor-dashboard`, `/advisor-dashboard/student/:student_id`
+- `/contact`

@@ -4,6 +4,10 @@ import { fetchMe, fetchAISuggestions, auth, fetchMyInterventions } from "@/lib/a
 import { devLog } from "@/lib/logger";
 import { gradeColor, priorityChip, priorityLabel, statusChip, statusLabel } from "@/lib/academic";
 import StudentChatbot from "@/components/StudentChatbot";
+import AchievementsSection from "@/components/AchievementsSection";
+import PeerComparisonSection from "@/components/PeerComparisonSection";
+import GpaCalculator from "@/components/GpaCalculator";
+import AppointmentsSection from "@/components/AppointmentsSection";
 import {
   LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
@@ -265,6 +269,18 @@ export default function StudentPortal() {
             </div>
           </div>
         </section>
+
+        {/* Achievements */}
+        <AchievementsSection />
+
+        {/* Peer Comparison */}
+        <PeerComparisonSection />
+
+        {/* GPA Calculator */}
+        <GpaCalculator currentCourses={profile.courses} currentGpa={profile.gpa} />
+
+        {/* Appointments */}
+        <AppointmentsSection />
 
         {/* Advisor Interventions */}
         {interventions.length > 0 && (

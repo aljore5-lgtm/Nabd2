@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { fetchChatHistory, sendChatMessage, clearChatHistory } from "@/lib/api";
 import { devLog } from "@/lib/logger";
-import { X, Send, Sparkles, Loader2, RefreshCw, Bot, User as UserIcon } from "lucide-react";
+import { X, Send, Sparkles, Loader2, RefreshCw, Bot, User as UserIcon, Mic, MicOff } from "lucide-react";
 
 const QUICK_PROMPTS = [
   { id: "qp-improve-gpa", text: "كيف يمكنني تحسين معدلي؟" },
@@ -18,7 +18,61 @@ export default function StudentChatbot({ studentName = "" }) {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
+  const recognitionRef = useRef(null);
   const scrollRef = useRef(null);
+
+  // Set up Web Speech API recognition (Arabic)
+  useEffect(() => {
+    const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (!SR) {
+      setVoiceSupported(false);
+      return;
+    }
+    setVoiceSupported(true);
+    const rec = new SR();
+    rec.lang = "ar-SA";
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (event) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput(transcript);
+    };
+    rec.onerror = (e) => {
+      setListening(false);
+      setVoiceError(
+        e.error === "not-allowed"
+          ? "الرجاء السماح بالوصول للميكروفون"
+          : "تعذّر الاستماع، حاول مرة أخرى"
+      );
+      setTimeout(() => setVoiceError(""), 3000);
+    };
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+  }, []);
+
+  function toggleVoice() {
+    const rec = recognitionRef.current;
+    if (!rec) return;
+    if (listening) {
+      rec.stop();
+      setListening(false);
+    } else {
+      setVoiceError("");
+      try {
+        rec.start();
+        setListening(true);
+      } catch (e) {
+        devLog.warn("voice start failed", e);
+      }
+    }
+  }
 
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -176,10 +230,25 @@ export default function StudentChatbot({ studentName = "" }) {
           onSubmit={(e) => { e.preventDefault(); send(); }}
           className="px-3 py-3 border-t border-[var(--nabd-border)] bg-white flex items-center gap-2"
         >
+          {voiceSupported && (
+            <button
+              type="button"
+              onClick={toggleVoice}
+              className={`rounded-full w-11 h-11 flex items-center justify-center border transition flex-shrink-0 ${
+                listening
+                  ? "bg-red-500 border-red-500 text-white animate-pulse"
+                  : "bg-white border-[var(--nabd-border)] text-[var(--nabd-primary)] hover:border-[var(--nabd-primary)]"
+              }`}
+              title={listening ? "إيقاف التسجيل" : "تسجيل صوتي"}
+              data-testid="chat-voice-btn"
+            >
+              {listening ? <MicOff size={16} /> : <Mic size={16} />}
+            </button>
+          )}
           <input
             data-testid="chat-input"
             className="flex-1 bg-[#fbfaff] border border-[var(--nabd-border)] rounded-full px-4 py-2.5 focus:border-[var(--nabd-primary)] focus:outline-none text-sm"
-            placeholder="اكتب رسالتك..."
+            placeholder={listening ? "🎤 يتم الاستماع..." : "اكتب رسالتك..."}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}
@@ -187,12 +256,15 @@ export default function StudentChatbot({ studentName = "" }) {
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="gradient-btn rounded-full w-11 h-11 flex items-center justify-center disabled:opacity-50"
+            className="gradient-btn rounded-full w-11 h-11 flex items-center justify-center disabled:opacity-50 flex-shrink-0"
             data-testid="chat-send-btn"
           >
             <Send size={16} />
           </button>
         </form>
+        {voiceError && (
+          <div className="px-4 py-2 text-xs text-red-700 bg-red-50 border-t border-red-200" data-testid="chat-voice-error">{voiceError}</div>
+        )}
       </div>
     </>
   );
