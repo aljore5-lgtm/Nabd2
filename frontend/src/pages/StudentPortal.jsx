@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { fetchMe, fetchAISuggestions, auth } from "@/lib/api";
+import { fetchMe, fetchAISuggestions, auth, fetchMyInterventions } from "@/lib/api";
+import StudentChatbot from "@/components/StudentChatbot";
 import {
   LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
 import {
   GraduationCap, LogOut, Sparkles, TrendingUp, TrendingDown, Calendar, BookOpen,
-  Target, Award, AlertTriangle, CheckCircle2, Brain, RefreshCw, Loader2, Clock, Mail, User,
+  Target, Award, AlertTriangle, CheckCircle2, Brain, RefreshCw, Loader2, Clock, Mail, User, ClipboardList,
 } from "lucide-react";
 
 const riskTheme = {
@@ -23,6 +24,7 @@ export default function StudentPortal() {
   const [ai, setAi] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [interventions, setInterventions] = useState([]);
 
   useEffect(() => {
     if (!auth.token) {
@@ -33,6 +35,12 @@ export default function StudentPortal() {
       try {
         const p = await fetchMe();
         setProfile(p);
+        try {
+          const r = await fetchMyInterventions();
+          setInterventions(r.interventions || []);
+        } catch (e) {
+          console.warn("interventions load failed", e);
+        }
       } catch {
         auth.clear();
         navigate("/student-login", { replace: true });
@@ -256,6 +264,43 @@ export default function StudentPortal() {
           </div>
         </section>
 
+        {/* Advisor Interventions */}
+        {interventions.length > 0 && (
+          <section className="nabd-card p-7 fade-up" data-testid="student-interventions-card">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div>
+                <span className="chip chip-purple"><ClipboardList size={14} /> توصيات المرشد</span>
+                <h2 className="text-2xl font-black mt-2">خطط التدخل من مرشدك الأكاديمي</h2>
+                <p className="text-sm text-[var(--nabd-text-soft)] mt-1">إجراءات أوصى بها مرشدك بناءً على وضعك الحالي.</p>
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              {interventions.map((it) => {
+                const pColor = it.priority === "high" ? "chip-danger" : it.priority === "medium" ? "chip-warn" : "chip-success";
+                const sColor = it.status === "done" ? "chip-success" : it.status === "in_progress" ? "chip-purple" : "chip-warn";
+                const sLabel = it.status === "done" ? "مكتمل" : it.status === "in_progress" ? "قيد التنفيذ" : "بانتظار";
+                const pLabel = it.priority === "high" ? "عالية" : it.priority === "medium" ? "متوسطة" : "منخفضة";
+                return (
+                  <div key={it.id} className="p-4 rounded-2xl bg-white border border-[var(--nabd-border)]" data-testid={`student-intervention-${it.id}`}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="font-bold">{it.title}</div>
+                      <div className="flex gap-1 flex-wrap">
+                        <span className={`chip ${pColor}`}>أولوية {pLabel}</span>
+                        <span className={`chip ${sColor}`}>{sLabel}</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-[var(--nabd-text-soft)] leading-relaxed whitespace-pre-wrap">{it.note}</p>
+                    <div className="text-xs text-[var(--nabd-text-soft)] mt-2">
+                      من {it.advisor_name} · {new Date(it.created_at).toLocaleDateString("ar-EG")}
+                      {it.due_date && <> · موعد التنفيذ: {it.due_date}</>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* AI Suggestions */}
         <section className="nabd-card p-7 fade-up relative overflow-hidden" data-testid="ai-suggestions-card">
           <div className="absolute -top-16 -left-16 w-72 h-72 rounded-full opacity-30" style={{ background: "radial-gradient(closest-side, #c4b5fd, transparent 70%)" }}></div>
@@ -368,6 +413,7 @@ export default function StudentPortal() {
           </div>
         </section>
       </main>
+      <StudentChatbot studentName={profile.name} />
     </div>
   );
 }

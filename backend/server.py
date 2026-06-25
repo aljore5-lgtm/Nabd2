@@ -109,6 +109,33 @@ def create_token(student_id: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
 
+def create_advisor_token(username: str) -> str:
+    payload = {
+        "sub": username,
+        "role": "advisor",
+        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+
+async def get_current_advisor(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        if payload.get("role") != "advisor":
+            raise HTTPException(status_code=403, detail="Advisor access only")
+        username = payload.get("sub")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    doc = await db.advisors.find_one({"username": username}, {"_id": 0, "password_hash": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Advisor not found")
+    return doc
+
+
 async def get_current_student(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -133,12 +160,15 @@ def compute_risk(gpa: float, attendance: float, quiz_avg: float, assignments_rat
     assn_risk = max(0.0, (1 - assignments_ratio) * 100)
     score = round(0.40 * gpa_risk + 0.30 * att_risk + 0.20 * quiz_risk + 0.10 * assn_risk)
     score = max(0, min(100, score))
-    if score < 30:
-        level = "low"
-    elif score < 60:
-        level = "medium"
-    else:
+    # Deterministic overrides for clearly failing students
+    if gpa < 2.0 or attendance < 60:
         level = "high"
+    elif gpa < 2.5 or attendance < 75 or score >= 50:
+        level = "medium"
+    elif score < 30:
+        level = "low"
+    else:
+        level = "medium"
     return level, score
 
 
@@ -445,6 +475,316 @@ def _fallback_suggestions(p: StudentProfile):
     }
 
 
+
+# ============================================================
+# Advisor authentication & data
+# ============================================================
+class AdvisorLoginIn(BaseModel):
+    username: str
+    password: str
+
+
+class InterventionIn(BaseModel):
+    student_id: str
+    title: str
+    note: str
+    priority: str = "medium"  # low | medium | high
+    due_date: Optional[str] = None  # ISO date string
+
+
+class InterventionStatusIn(BaseModel):
+    status: str  # pending | in_progress | done
+
+
+SEED_ADVISOR = {
+    "username": "advisor",
+    "password": "nabd1234",
+    "name": "د. عبدالله المرشد",
+    "email": "advisor@nabd.edu",
+    "avatar_initial": "ع",
+    "title": "مرشد أكاديمي",
+}
+
+
+async def seed_advisor():
+    count = await db.advisors.count_documents({})
+    if count > 0:
+        logger.info(f"Advisors already seeded: {count}")
+        return
+    doc = {
+        "id": str(uuid.uuid4()),
+        "username": SEED_ADVISOR["username"],
+        "name": SEED_ADVISOR["name"],
+        "email": SEED_ADVISOR["email"],
+        "avatar_initial": SEED_ADVISOR["avatar_initial"],
+        "title": SEED_ADVISOR["title"],
+        "password_hash": hash_password(SEED_ADVISOR["password"]),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.advisors.insert_one(doc)
+    logger.info("Seeded default advisor")
+
+
+@api_router.post("/advisor/login")
+async def advisor_login(body: AdvisorLoginIn):
+    doc = await db.advisors.find_one({"username": body.username})
+    if not doc or not verify_password(body.password, doc["password_hash"]):
+        raise HTTPException(status_code=401, detail="اسم المستخدم أو كلمة المرور غير صحيحة")
+    token = create_advisor_token(doc["username"])
+    return {
+        "token": token,
+        "advisor": {
+            "username": doc["username"],
+            "name": doc["name"],
+            "title": doc["title"],
+            "avatar_initial": doc["avatar_initial"],
+        },
+    }
+
+
+@api_router.get("/advisor/me")
+async def advisor_me(advisor=Depends(get_current_advisor)):
+    return advisor
+
+
+@api_router.get("/advisor/students")
+async def advisor_list_students(advisor=Depends(get_current_advisor)):
+    """Return all students with summary risk for advisor dashboard."""
+    cursor = db.students.find({}, {"_id": 0, "password_hash": 0})
+    students = await cursor.to_list(1000)
+    out = []
+    for s in students:
+        completed = s.get("assignments_completed", 0)
+        total = max(1, s.get("assignments_total", 1))
+        level, score = compute_risk(s["gpa"], s["attendance"], s.get("quiz_avg", 70), completed / total)
+        out.append({
+            "id": s["id"],
+            "student_id": s["student_id"],
+            "name": s["name"],
+            "avatar_initial": s["avatar_initial"],
+            "major": s["major"],
+            "year": s["year"],
+            "gpa": s["gpa"],
+            "attendance": s["attendance"],
+            "risk_level": level,
+            "risk_score": score,
+        })
+    # Sort by risk_score desc (most at-risk first)
+    out.sort(key=lambda x: -x["risk_score"])
+    # Stats
+    stats = {
+        "total": len(out),
+        "high": sum(1 for x in out if x["risk_level"] == "high"),
+        "medium": sum(1 for x in out if x["risk_level"] == "medium"),
+        "low": sum(1 for x in out if x["risk_level"] == "low"),
+        "avg_gpa": round(sum(x["gpa"] for x in out) / max(1, len(out)), 2),
+        "avg_attendance": round(sum(x["attendance"] for x in out) / max(1, len(out)), 1),
+    }
+    return {"students": out, "stats": stats}
+
+
+@api_router.get("/advisor/student/{student_id}", response_model=StudentProfile)
+async def advisor_student_detail(student_id: str, advisor=Depends(get_current_advisor)):
+    doc = await db.students.find_one({"student_id": student_id}, {"_id": 0, "password_hash": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return build_profile(doc)
+
+
+@api_router.post("/advisor/intervention")
+async def add_intervention(body: InterventionIn, advisor=Depends(get_current_advisor)):
+    student = await db.students.find_one({"student_id": body.student_id})
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "student_id": body.student_id,
+        "advisor_username": advisor["username"],
+        "advisor_name": advisor["name"],
+        "title": body.title,
+        "note": body.note,
+        "priority": body.priority,
+        "due_date": body.due_date,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.interventions.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.get("/advisor/student/{student_id}/interventions")
+async def list_interventions_advisor(student_id: str, advisor=Depends(get_current_advisor)):
+    cursor = db.interventions.find({"student_id": student_id}, {"_id": 0}).sort("created_at", -1)
+    items = await cursor.to_list(500)
+    return {"interventions": items}
+
+
+@api_router.patch("/advisor/intervention/{intervention_id}")
+async def update_intervention(intervention_id: str, body: InterventionStatusIn, advisor=Depends(get_current_advisor)):
+    if body.status not in ("pending", "in_progress", "done"):
+        raise HTTPException(status_code=400, detail="Invalid status")
+    res = await db.interventions.update_one(
+        {"id": intervention_id},
+        {"$set": {"status": body.status, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Intervention not found")
+    doc = await db.interventions.find_one({"id": intervention_id}, {"_id": 0})
+    return doc
+
+
+# Student can view their own interventions (read-only)
+@api_router.get("/student/interventions")
+async def list_my_interventions(student=Depends(get_current_student)):
+    cursor = db.interventions.find({"student_id": student["student_id"]}, {"_id": 0}).sort("created_at", -1)
+    items = await cursor.to_list(500)
+    return {"interventions": items}
+
+
+# ============================================================
+# AI Student Assistant Chatbot
+# ============================================================
+class ChatMessageIn(BaseModel):
+    message: str
+
+
+@api_router.get("/student/chat/history")
+async def chat_history(student=Depends(get_current_student)):
+    cursor = db.chat_messages.find({"student_id": student["student_id"]}, {"_id": 0}).sort("created_at", 1)
+    msgs = await cursor.to_list(1000)
+    return {"messages": msgs}
+
+
+@api_router.delete("/student/chat/history")
+async def chat_history_clear(student=Depends(get_current_student)):
+    await db.chat_messages.delete_many({"student_id": student["student_id"]})
+    return {"ok": True}
+
+
+@api_router.post("/student/chat")
+async def chat_send(body: ChatMessageIn, student=Depends(get_current_student)):
+    msg = body.message.strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="رسالة فارغة")
+    profile = build_profile(student)
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    # Persist user message
+    user_doc = {
+        "id": str(uuid.uuid4()),
+        "student_id": profile.student_id,
+        "role": "user",
+        "content": msg,
+        "created_at": now_iso,
+    }
+    await db.chat_messages.insert_one(user_doc)
+
+    # Build context: previous turns (limit last 20)
+    history_cursor = db.chat_messages.find(
+        {"student_id": profile.student_id}, {"_id": 0}
+    ).sort("created_at", 1)
+    history = await history_cursor.to_list(40)
+    # Keep last 20 prior messages (excluding current we just added is fine to include)
+    history = history[-20:]
+
+    courses_text = ", ".join(f"{c.code} ({c.grade}%)" for c in profile.courses)
+    system_message = (
+        f"أنت 'مساعد نبض'، مرشد أكاديمي ذكي ومتعاطف يتحدث العربية بطلاقة. "
+        f"تساعد الطلاب الجامعيين على فهم وضعهم الأكاديمي، وتقدم نصائح دراسية عملية، "
+        f"تشرح المعدلات، تقترح خطط مذاكرة، وتجيب عن أي سؤال بشأن الدراسة. "
+        f"بيانات الطالب الحالي:\n"
+        f"- الاسم: {profile.name}\n"
+        f"- التخصص: {profile.major} (السنة {profile.year})\n"
+        f"- المعدل التراكمي: {profile.gpa:.2f} من 4.00\n"
+        f"- الحضور: {profile.attendance:.0f}%\n"
+        f"- متوسط الكويزات: {profile.quiz_avg:.0f}%\n"
+        f"- الواجبات: {profile.assignments_completed}/{profile.assignments_total}\n"
+        f"- مستوى المخاطرة: {profile.risk_level} ({profile.risk_score}/100)\n"
+        f"- المقررات: {courses_text}\n"
+        f"كن ودوداً، شخصياً، ومحدداً. استخدم لغة مشجعة. اجعل الردود قصيرة-متوسطة الطول وقابلة للتنفيذ."
+    )
+
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        # Use a stable per-student session id so the library keeps context
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"nabd-chat-{profile.student_id}",
+            system_message=system_message,
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+
+        # We send the latest user message; library handles session memory.
+        response = await chat.send_message(UserMessage(text=msg))
+        reply = response if isinstance(response, str) else str(response)
+        source = "ai"
+    except Exception as e:
+        logger.error(f"Chat AI error: {e}")
+        reply = _chat_fallback(msg, profile)
+        source = "fallback"
+
+    assistant_doc = {
+        "id": str(uuid.uuid4()),
+        "student_id": profile.student_id,
+        "role": "assistant",
+        "content": reply,
+        "source": source,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.chat_messages.insert_one(assistant_doc)
+    assistant_doc.pop("_id", None)
+    return {"reply": reply, "source": source, "message": assistant_doc}
+
+
+def _chat_fallback(msg: str, p: StudentProfile) -> str:
+    m = msg.strip()
+    if any(k in m for k in ["معدل", "GPA", "gpa"]):
+        return f"معدلك التراكمي حالياً {p.gpa:.2f}. {'استمر بنفس النهج!' if p.gpa >= 3.0 else 'لرفع المعدل: ركّز على المقررات الأضعف، احضر ساعات المكتب، وضع خطة مذاكرة أسبوعية ثابتة.'}"
+    if "حضور" in m:
+        return f"نسبة حضورك {p.attendance:.0f}%. {'ممتاز' if p.attendance >= 90 else 'حاول الالتزام بكل المحاضرات، الحضور المنتظم يرفع المعدل بشكل ملحوظ.'}"
+    if any(k in m for k in ["خطر", "مخاطرة", "تعثر"]):
+        return f"مستوى مخاطرتك حالياً: {p.risk_level}. {'لا داعي للقلق ' if p.risk_level == 'low' else 'يمكنك تحسينه بسرعة بالتركيز على الحضور والواجبات.'}"
+    return "أنا هنا لمساعدتك! اسألني عن معدلك، نسبة حضورك، خطط مذاكرة، أو أي صعوبة تواجهها في مقرر معين."
+
+
+# ============================================================
+# Contact / About
+# ============================================================
+@api_router.get("/contact")
+async def contact_info():
+    return {
+        "project_name": "Nabd Assistant",
+        "project_name_ar": "مساعد نبض",
+        "developer": "Aljory Mohammed Alaboud",
+        "tagline": "نظام ذكاء اصطناعي للتنبؤ المبكر بنجاح الطلاب الجامعيين",
+        "tagline_ar": "نظام ذكاء اصطناعي للتنبؤ المبكر بنجاح الطلاب الجامعيين",
+        "email": "contact@nabd.edu",
+        "year": datetime.now(timezone.utc).year,
+    }
+
+
+class ContactMessageIn(BaseModel):
+    name: str
+    email: str
+    message: str
+
+
+@api_router.post("/contact/message")
+async def contact_message(body: ContactMessageIn):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": body.name,
+        "email": body.email,
+        "message": body.message,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.contact_messages.insert_one(doc)
+    doc.pop("_id", None)
+    return {"ok": True, "message": doc}
+
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -459,6 +799,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def on_startup():
     await seed_students()
+    await seed_advisor()
 
 
 @app.on_event("shutdown")

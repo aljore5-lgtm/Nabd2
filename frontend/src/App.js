@@ -4,6 +4,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Landing from "@/pages/Landing";
 import StudentLogin from "@/pages/StudentLogin";
 import StudentPortal from "@/pages/StudentPortal";
+import AdvisorLogin from "@/pages/AdvisorLogin";
+import AdvisorDashboard from "@/pages/AdvisorDashboard";
+import AdvisorStudentDetail from "@/pages/AdvisorStudentDetail";
+import Contact from "@/pages/Contact";
 
 function App() {
   return (
@@ -14,6 +18,10 @@ function App() {
           <Route path="/dashboard" element={<Landing />} />
           <Route path="/student-login" element={<StudentLogin />} />
           <Route path="/student-portal" element={<StudentPortal />} />
+          <Route path="/advisor-login" element={<AdvisorLogin />} />
+          <Route path="/advisor-dashboard" element={<AdvisorDashboard />} />
+          <Route path="/advisor-dashboard/student/:student_id" element={<AdvisorStudentDetail />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

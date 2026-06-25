@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { GraduationCap, Sparkles, ShieldCheck, ChartLine, Mic, ArrowLeft, LogIn, User } from "lucide-react";
+import { GraduationCap, Sparkles, ShieldCheck, ChartLine, Mic, ArrowLeft, LogIn, User, Mail, Code2, Bot } from "lucide-react";
 
 const sampleStudents = [
   { initial: "س", name: "سارة العتيبي", risk: 12, color: "var(--nabd-success)" },
@@ -22,6 +22,8 @@ export default function Landing() {
           <a href="#features" className="text-[var(--nabd-text)] hover:text-[var(--nabd-primary)] transition" data-testid="nav-features">الميزات</a>
           <a href="#preview" className="text-[var(--nabd-text)] hover:text-[var(--nabd-primary)] transition" data-testid="nav-preview">عن المنصة</a>
           <Link to="/student-login" className="text-[var(--nabd-text)] hover:text-[var(--nabd-primary)] transition" data-testid="nav-student-portal">بوابة الطالب</Link>
+          <Link to="/advisor-login" className="text-[var(--nabd-text)] hover:text-[var(--nabd-primary)] transition" data-testid="nav-advisor">لوحة المرشد</Link>
+          <Link to="/contact" className="text-[var(--nabd-text)] hover:text-[var(--nabd-primary)] transition" data-testid="nav-contact">تواصل</Link>
         </nav>
         <div className="flex items-center gap-3">
           <Link
@@ -32,13 +34,14 @@ export default function Landing() {
             <User size={16} />
             <span>بوابة الطالب</span>
           </Link>
-          <button
+          <Link
+            to="/advisor-login"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--nabd-border)] text-sm font-bold hover:border-[var(--nabd-primary)] transition"
             data-testid="advisor-login-btn"
           >
             <LogIn size={16} />
             <span>دخول المرشد</span>
-          </button>
+          </Link>
         </div>
       </header>
 
@@ -60,9 +63,9 @@ export default function Landing() {
               <Link to="/student-login" className="gradient-btn px-6 py-3 rounded-full font-bold inline-flex items-center gap-2" data-testid="hero-student-portal-btn">
                 <GraduationCap size={18} /> دخول بوابة الطالب <ArrowLeft size={16} />
               </Link>
-              <button className="px-6 py-3 rounded-full font-bold border border-[var(--nabd-border)] bg-white hover:border-[var(--nabd-primary)] transition" data-testid="advisor-login-btn-hero">
-                دخول المرشد
-              </button>
+              <Link to="/advisor-login" className="px-6 py-3 rounded-full font-bold border border-[var(--nabd-border)] bg-white hover:border-[var(--nabd-primary)] transition inline-flex items-center gap-2" data-testid="advisor-login-btn-hero">
+                <ShieldCheck size={16} /> دخول المرشد
+              </Link>
             </div>
             <div className="grid grid-cols-3 gap-6 mt-12">
               <Stat label="طالب نموذجي" value="18" />
@@ -103,7 +106,7 @@ export default function Landing() {
 
       {/* Features */}
       <section id="features" className="px-6 md:px-12 pb-24">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-6">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Feature
             icon={<ShieldCheck className="text-[var(--nabd-primary)]" />}
             title="تنبؤ مبكّر"
@@ -115,6 +118,12 @@ export default function Landing() {
             title="تحليلات حية"
             desc="لوحة بيانات تفاعلية: المعدلات، الحضور، الواجبات والاختبارات."
             testId="feature-analytics"
+          />
+          <Feature
+            icon={<Bot className="text-[var(--nabd-primary)]" />}
+            title="مساعد ذكي للطالب"
+            desc="شات بوت بالعربية يجيب عن الأسئلة الأكاديمية ويقترح خطط دراسة شخصية."
+            testId="feature-assistant"
           />
           <Feature
             icon={<Mic className="text-[var(--nabd-primary)]" />}
@@ -155,9 +164,38 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Contact section on landing */}
+      <section id="contact" className="px-6 md:px-12 pb-24">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-6">
+          <div className="nabd-card p-8 fade-up" data-testid="landing-developer-card">
+            <div className="w-12 h-12 rounded-xl bg-[#f5f3ff] flex items-center justify-center mb-4 text-[var(--nabd-primary)]">
+              <Code2 />
+            </div>
+            <div className="text-xs font-bold text-[var(--nabd-text-soft)] mb-1">المطوّر</div>
+            <h3 className="text-2xl font-black mb-2">Aljory Mohammed Alaboud</h3>
+            <p className="text-[var(--nabd-text-soft)] leading-relaxed">
+              مطوّرة منصة نبض — مسؤولة عن تصميم وبناء النظام بالكامل، من النماذج التنبؤية حتى تجربة المستخدم.
+            </p>
+          </div>
+          <div className="nabd-card p-8 fade-up delay-1" data-testid="landing-project-card">
+            <div className="w-12 h-12 rounded-xl bg-[#f5f3ff] flex items-center justify-center mb-4 text-[var(--nabd-primary)]">
+              <Sparkles />
+            </div>
+            <div className="text-xs font-bold text-[var(--nabd-text-soft)] mb-1">اسم المشروع</div>
+            <h3 className="text-2xl font-black mb-2">Nabd Assistant</h3>
+            <p className="text-[var(--nabd-text-soft)] leading-relaxed">
+              نظام ذكاء اصطناعي للتنبؤ المبكر بنجاح الطلاب الجامعيين، يدمج بوابة الطالب، مساعد المحادثة، ولوحة المرشد.
+            </p>
+            <Link to="/contact" className="mt-4 inline-flex items-center gap-2 font-bold text-[var(--nabd-primary)] hover:underline" data-testid="landing-contact-link">
+              <Mail size={16} /> صفحة التواصل الكاملة
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <footer className="px-6 md:px-12 py-8 border-t border-[var(--nabd-border)]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-sm text-[var(--nabd-text-soft)]">
-          <div>© {new Date().getFullYear()} نبض — منصة الذكاء الاصطناعي للجامعات</div>
+          <div>© {new Date().getFullYear()} نبض — منصة الذكاء الاصطناعي للجامعات · تطوير Aljory Mohammed Alaboud</div>
           <Link to="/student-login" className="font-bold text-[var(--nabd-primary)] hover:underline" data-testid="footer-student-portal-link">
             بوابة الطالب →
           </Link>
