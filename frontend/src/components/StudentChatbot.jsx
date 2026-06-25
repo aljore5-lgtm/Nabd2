@@ -60,8 +60,15 @@ export default function StudentChatbot({ studentName = "" }) {
     }
   }
 
+  const [confirmClear, setConfirmClear] = useState(false);
+
   async function clearAll() {
-    if (!confirm("هل تريد مسح كامل المحادثة؟")) return;
+    if (!confirmClear) {
+      setConfirmClear(true);
+      setTimeout(() => setConfirmClear(false), 3000);
+      return;
+    }
+    setConfirmClear(false);
     try {
       await clearChatHistory();
       setMessages([]);
@@ -100,7 +107,7 @@ export default function StudentChatbot({ studentName = "" }) {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={clearAll} className="p-2 rounded-full hover:bg-white/15 transition" title="مسح المحادثة" data-testid="chat-clear-btn">
+            <button onClick={clearAll} className={`p-2 rounded-full hover:bg-white/15 transition ${confirmClear ? "bg-white/25" : ""}`} title={confirmClear ? "اضغط مرة أخرى للتأكيد" : "مسح المحادثة"} data-testid="chat-clear-btn">
               <RefreshCw size={16} />
             </button>
             <button onClick={() => setOpen(false)} className="p-2 rounded-full hover:bg-white/15 transition" data-testid="chat-close-btn">
