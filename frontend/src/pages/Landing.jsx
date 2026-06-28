@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { GraduationCap, Sparkles, ShieldCheck, ChartLine, Mic, ArrowLeft, LogIn, User, Mail, Code2, Bot } from "lucide-react";
+import { GraduationCap, Sparkles, ShieldCheck, ChartLine, Mic, ArrowLeft, LogIn, User, Mail, Code2, Bot, Wallet } from "lucide-react";
 
 const sampleStudents = [
   { initial: "س", name: "سارة العتيبي", risk: 12, color: "var(--nabd-success)" },
@@ -23,6 +23,9 @@ export default function Landing() {
           <a href="#preview" className="text-[var(--nabd-text)] hover:text-[var(--nabd-primary)] transition" data-testid="nav-preview">عن المنصة</a>
           <Link to="/student-login" className="text-[var(--nabd-text)] hover:text-[var(--nabd-primary)] transition" data-testid="nav-student-portal">بوابة الطالب</Link>
           <Link to="/advisor-login" className="text-[var(--nabd-text)] hover:text-[var(--nabd-primary)] transition" data-testid="nav-advisor">لوحة المرشد</Link>
+          <Link to="/wallet" className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 font-extrabold transition hover:bg-emerald-100" data-testid="nav-wallet">
+            <Wallet size={14} /> محفظة الإنماء
+          </Link>
           <Link to="/contact" className="text-[var(--nabd-text)] hover:text-[var(--nabd-primary)] transition" data-testid="nav-contact">تواصل</Link>
         </nav>
         <div className="flex items-center gap-3">

@@ -165,3 +165,29 @@ export async function sendContactMessage(payload) {
   const { data } = await api.post("/contact/message", payload);
   return data;
 }
+
+// ---- Wallet (Alinma Student Wallet) ----
+export async function fetchWallet() {
+  const { data } = await api.get("/wallet/me");
+  return data;
+}
+
+export async function createSavingsGoal(payload) {
+  const { data } = await api.post("/wallet/goal", payload);
+  return data;
+}
+
+export async function depositToGoal(goalId, amount) {
+  const { data } = await api.post(`/wallet/goal/${goalId}/deposit`, { amount });
+  return data;
+}
+
+export async function deleteSavingsGoal(goalId) {
+  const { data } = await api.delete(`/wallet/goal/${goalId}`);
+  return data;
+}
+
+export async function fetchWalletCoach(question) {
+  const { data } = await api.post("/wallet/coach", question ? { question } : {});
+  return data;
+}

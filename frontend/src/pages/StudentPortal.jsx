@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import {
   GraduationCap, LogOut, Sparkles, TrendingUp, TrendingDown, Calendar, BookOpen,
-  Target, Award, AlertTriangle, CheckCircle2, Brain, RefreshCw, Loader2, Clock, Mail, User, ClipboardList,
+  Target, Award, AlertTriangle, CheckCircle2, Brain, RefreshCw, Loader2, Clock, Mail, User, ClipboardList, Wallet,
 } from "lucide-react";
 
 const riskTheme = {
@@ -104,6 +104,9 @@ export default function StudentPortal() {
           <span className="text-xs font-bold text-[var(--nabd-text-soft)] hidden md:inline mr-2">/ بوابة الطالب</span>
         </Link>
         <div className="flex items-center gap-3">
+          <Link to="/wallet" className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-white text-sm transition" style={{ background: "linear-gradient(135deg, #00865A 0%, #006442 100%)", boxShadow: "0 6px 18px -6px rgba(0,134,90,0.5)" }} data-testid="header-wallet-btn">
+            <Wallet size={14} /> محفظتي
+          </Link>
           <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-full bg-[#f5f3ff]">
             <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center font-extrabold text-[var(--nabd-primary)]">
               {profile.avatar_initial}

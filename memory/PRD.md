@@ -44,6 +44,18 @@ Nabd (نبض) is an Arabic-RTL academic early-warning AI platform for universiti
 - 🎤 **Voice input for chatbot**: Web Speech API (`ar-SA`); mic toggle with animation; auto-fills text input; graceful fallback if unsupported.
 - Backend endpoints added: `/student/achievements`, `/student/comparison`, `/student/appointments` (POST/GET/DELETE), `/advisor/appointments` (GET/PATCH).
 
+**Session 5 — Alinma Student Wallet (current)**
+- 💚 New `/wallet` route — premium fintech UI in Alinma green palette (`#003B26` → `#00865A`), full Arabic RTL.
+- Auto-seeded wallet per student: SAR balance + monthly scholarship (990 ر.س) + 10 sample transactions + 6 budget categories.
+- 🎯 **Savings Goals** CRUD: create, deposit (atomic balance deduction + 5 reward points), delete. Estimated completion date computed from monthly contribution.
+- 📊 **Smart Budget**: bar chart (spent vs remaining) + pie chart (distribution) + 6 category cards with overspend warning.
+- 🤖 **AI Financial Coach** via Claude Sonnet 4.5 — JSON weekly advice (summary/wins/improvements/tips/next_goal/motivational) + free-form Q&A; rule-based fallback.
+- 📈 **Financial Health Score** (0-100) computed from savings rate (30%) + budget adherence (30%) + balance health (25%) + emergency fund (15%).
+- 🏆 **NABD Rewards**: points + tier system (Bronze→Silver→Gold→Platinum) + 5-item redemption catalog (coffee/cinema/Amazon/accessories/trip).
+- 🎁 **Student Offers**: 6 partner cards (Noon/Jarir/Careem/Shahid VIP/McDonald's/Coursera) with discount badges & promo codes.
+- Backend: 6 new endpoints (`GET /wallet/me`, `POST/DELETE /wallet/goal`, `POST /wallet/goal/{id}/deposit`, `POST /wallet/coach`, `GET /wallet/offers`).
+- Integration: header button "محفظتي" in Student Portal + nav link "محفظة الإنماء" on Landing.
+
 ## Backlog (P0/P1/P2)
 - P1: Refactor `server.py` (~1000+ lines) into modules.
 - P1: Reset AI chat session memory after history delete (currently only Mongo is cleared).

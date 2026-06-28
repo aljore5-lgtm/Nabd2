@@ -1000,6 +1000,459 @@ async def update_appointment_status(appointment_id: str, body: AppointmentStatus
     return doc
 
 
+# ============================================================
+# 💚 Alinma Student Wallet
+# ============================================================
+import random
+
+DEFAULT_SCHOLARSHIP = 990.0  # SAR — typical Saudi student monthly stipend
+
+CATEGORY_DEFS = [
+    {"key": "food", "name": "طعام ومشروبات", "icon": "utensils", "color": "#f59e0b"},
+    {"key": "transport", "name": "مواصلات", "icon": "car", "color": "#0ea5e9"},
+    {"key": "education", "name": "تعليم ودورات", "icon": "graduation-cap", "color": "#6d4dff"},
+    {"key": "books", "name": "كتب ومراجع", "icon": "book", "color": "#ec4899"},
+    {"key": "entertainment", "name": "ترفيه", "icon": "gamepad", "color": "#a855f7"},
+    {"key": "other", "name": "مصروفات أخرى", "icon": "more-horizontal", "color": "#94a3b8"},
+]
+
+STUDENT_OFFERS = [
+    {"id": "off-noon", "brand": "نون", "title": "خصم 15% للطلاب", "desc": "خصم على الإلكترونيات والمستلزمات الدراسية", "discount": "15%", "tag": "تكنولوجيا", "color": "#FFE600", "code": "STUDENT15"},
+    {"id": "off-jarir", "brand": "مكتبة جرير", "title": "10% على الكتب الجامعية", "desc": "كتب أكاديمية + قرطاسية", "discount": "10%", "tag": "كتب", "color": "#003E7E", "code": "NABD-JARIR"},
+    {"id": "off-careem", "brand": "كريم", "title": "20 ر.س لأول 3 رحلات", "desc": "للطلاب الجامعيين فقط", "discount": "20 ر.س", "tag": "مواصلات", "color": "#0fa54a", "code": "STUDENT20"},
+    {"id": "off-shahid", "brand": "شاهد VIP", "title": "اشتراك شهري بنصف السعر", "desc": "محتوى تعليمي وترفيهي حصري", "discount": "50%", "tag": "ترفيه", "color": "#0ea5e9", "code": "NABDSHAHID"},
+    {"id": "off-jollibee", "brand": "ماكدونالدز", "title": "وجبة الطالب بسعر مميز", "desc": "ساندوتش + شراب بـ 15 ر.س", "discount": "خاص", "tag": "طعام", "color": "#FFCB00", "code": "STDMEAL"},
+    {"id": "off-coursera", "brand": "كورسيرا", "title": "كورس مجاني مع شهادة", "desc": "أكثر من 200 شهادة احترافية", "discount": "مجاناً", "tag": "تعليم", "color": "#0056D2", "code": "NABDFREE"},
+]
+
+REWARD_LEVELS = [
+    {"key": "bronze", "name": "برونزي", "min_points": 0, "color": "#cd7f32"},
+    {"key": "silver", "name": "فضي", "min_points": 200, "color": "#94a3b8"},
+    {"key": "gold", "name": "ذهبي", "min_points": 500, "color": "#d4af37"},
+    {"key": "platinum", "name": "بلاتيني", "min_points": 1000, "color": "#10b981"},
+]
+
+REWARDS_CATALOG = [
+    {"id": "rw-coffee", "title": "كوب قهوة مجاني", "cost": 50, "icon": "coffee", "partner": "ستاربكس"},
+    {"id": "rw-cinema", "title": "تذكرة سينما", "cost": 150, "icon": "film", "partner": "VOX Cinemas"},
+    {"id": "rw-amazon", "title": "بطاقة أمازون 50 ر.س", "cost": 250, "icon": "gift", "partner": "أمازون"},
+    {"id": "rw-airpods", "title": "خصم 100 ر.س على إكسسوارات", "cost": 400, "icon": "headphones", "partner": "إكسترا"},
+    {"id": "rw-trip", "title": "رحلة طلابية مدعومة", "cost": 800, "icon": "plane", "partner": "STC Travel"},
+]
+
+
+def _level_from_points(points: int) -> dict:
+    current = REWARD_LEVELS[0]
+    nxt = None
+    for i, lvl in enumerate(REWARD_LEVELS):
+        if points >= lvl["min_points"]:
+            current = lvl
+            nxt = REWARD_LEVELS[i + 1] if i + 1 < len(REWARD_LEVELS) else None
+    progress = 100
+    to_next = 0
+    if nxt:
+        span = nxt["min_points"] - current["min_points"]
+        in_span = points - current["min_points"]
+        progress = round((in_span / span) * 100) if span else 0
+        to_next = nxt["min_points"] - points
+    return {
+        "current": current,
+        "next": nxt,
+        "progress": max(0, min(100, progress)),
+        "to_next": max(0, to_next),
+    }
+
+
+def _seed_wallet_for(student) -> dict:
+    """Create a deterministic-but-varied wallet for a seeded student."""
+    rng = random.Random(student["student_id"])  # deterministic per student
+    balance = round(rng.uniform(800, 3200), 2)
+    points = rng.randint(80, 700)
+
+    # Transactions: last 10 of mixed categories
+    today = datetime.now(timezone.utc)
+    transactions = []
+    samples = [
+        ("food", -28.0, "كافيه الجامعة"),
+        ("food", -45.5, "مطعم البيك"),
+        ("transport", -18.0, "كريم - رحلة الكلية"),
+        ("transport", -22.0, "كريم - عودة للسكن"),
+        ("education", -149.0, "دورة بايثون - يوديمي"),
+        ("books", -65.0, "مكتبة جرير - كتاب الإحصاء"),
+        ("entertainment", -38.0, "اشتراك Spotify"),
+        ("entertainment", -55.0, "تذكرة سينما"),
+        ("other", -42.0, "بقالة سريعة"),
+        ("food", -19.0, "وجبة سريعة"),
+    ]
+    rng.shuffle(samples)
+    for i, (cat, amount, label) in enumerate(samples[:8]):
+        # vary amount slightly
+        adj = round(amount + rng.uniform(-5, 5), 2)
+        transactions.append({
+            "id": str(uuid.uuid4()),
+            "label": label,
+            "category": cat,
+            "amount": adj,
+            "type": "expense",
+            "created_at": (today - timedelta(days=i + 1, hours=rng.randint(0, 22))).isoformat(),
+        })
+    # add the scholarship deposit
+    transactions.insert(0, {
+        "id": str(uuid.uuid4()),
+        "label": "إيداع المنحة الشهرية",
+        "category": "income",
+        "amount": DEFAULT_SCHOLARSHIP,
+        "type": "income",
+        "created_at": (today - timedelta(days=2)).isoformat(),
+    })
+
+    # Budget per category (limit, spent computed from transactions)
+    budget = []
+    defaults = {"food": 350, "transport": 220, "education": 250, "books": 150, "entertainment": 120, "other": 200}
+    for c in CATEGORY_DEFS:
+        spent = sum(abs(t["amount"]) for t in transactions if t["category"] == c["key"])
+        budget.append({
+            "key": c["key"], "name": c["name"], "icon": c["icon"], "color": c["color"],
+            "limit": defaults[c["key"]],
+            "spent": round(spent, 2),
+        })
+
+    # Initial savings goals (1 sample)
+    goals = [{
+        "id": str(uuid.uuid4()),
+        "title": "شراء لاب توب جديد",
+        "target": 4500.0,
+        "saved": round(rng.uniform(400, 1800), 2),
+        "monthly_contribution": 300.0,
+        "icon": "laptop",
+        "color": "#00865A",
+        "created_at": today.isoformat(),
+    }]
+
+    return {
+        "id": str(uuid.uuid4()),
+        "student_id": student["student_id"],
+        "balance": balance,
+        "monthly_scholarship": DEFAULT_SCHOLARSHIP,
+        "transactions": transactions,
+        "budget": budget,
+        "savings_goals": goals,
+        "rewards_points": points,
+        "created_at": today.isoformat(),
+        "updated_at": today.isoformat(),
+    }
+
+
+async def _get_or_create_wallet(student) -> dict:
+    doc = await db.wallets.find_one({"student_id": student["student_id"]}, {"_id": 0})
+    if doc:
+        return doc
+    new_doc = _seed_wallet_for(student)
+    await db.wallets.insert_one(new_doc)
+    new_doc.pop("_id", None)
+    return new_doc
+
+
+def _financial_health(wallet: dict) -> dict:
+    income = wallet["monthly_scholarship"]
+    # total budget spent
+    total_spent = sum(b["spent"] for b in wallet["budget"])
+    total_limit = sum(b["limit"] for b in wallet["budget"])
+    saved_in_goals = sum(g["saved"] for g in wallet["savings_goals"])
+
+    # Components (0-100 each)
+    savings_rate = min(100, (saved_in_goals / max(1, income * 6)) * 100)  # vs 6 months income
+    budget_adherence = max(0, 100 - max(0, (total_spent - total_limit) / max(1, total_limit) * 100))
+    if total_spent < total_limit * 0.5:
+        budget_adherence = min(100, budget_adherence + 10)  # bonus for under-spending
+    balance_health = min(100, (wallet["balance"] / max(1, income)) * 50)  # cap at 2 months income
+    emergency = 100 if wallet["balance"] >= income else round((wallet["balance"] / income) * 100)
+
+    score = round(0.30 * savings_rate + 0.30 * budget_adherence + 0.25 * balance_health + 0.15 * emergency)
+    score = max(0, min(100, score))
+
+    if score >= 80:
+        label = "ممتاز"
+        tone = "excellent"
+    elif score >= 60:
+        label = "جيد"
+        tone = "good"
+    elif score >= 40:
+        label = "متوسط"
+        tone = "fair"
+    else:
+        label = "يحتاج تحسين"
+        tone = "poor"
+
+    return {
+        "score": score,
+        "label": label,
+        "tone": tone,
+        "components": {
+            "savings_rate": round(savings_rate),
+            "budget_adherence": round(budget_adherence),
+            "balance_health": round(balance_health),
+            "emergency_fund": round(emergency),
+        },
+    }
+
+
+def _enrich(wallet: dict) -> dict:
+    """Add computed fields: financial_health, rewards level, summary."""
+    health = _financial_health(wallet)
+    level_info = _level_from_points(wallet["rewards_points"])
+    income = wallet["monthly_scholarship"]
+    total_spent = sum(b["spent"] for b in wallet["budget"])
+    saved = sum(g["saved"] for g in wallet["savings_goals"])
+    return {
+        **wallet,
+        "categories": CATEGORY_DEFS,
+        "financial_health": health,
+        "rewards": {
+            "points": wallet["rewards_points"],
+            "level": level_info,
+            "catalog": REWARDS_CATALOG,
+        },
+        "offers": STUDENT_OFFERS,
+        "summary": {
+            "income": income,
+            "spent": round(total_spent, 2),
+            "saved": round(saved, 2),
+            "remaining": round(income - total_spent, 2),
+            "savings_rate_pct": round((saved / max(1, income * 6)) * 100, 1),
+        },
+    }
+
+
+class SavingsGoalIn(BaseModel):
+    title: str
+    target: float
+    monthly_contribution: float = 200.0
+    icon: str = "target"
+    color: str = "#00865A"
+
+
+class GoalDepositIn(BaseModel):
+    amount: float
+
+
+class WalletCoachIn(BaseModel):
+    question: Optional[str] = None  # if None → general weekly advice
+
+
+@api_router.get("/wallet/me")
+async def get_wallet(student=Depends(get_current_student)):
+    wallet = await _get_or_create_wallet(student)
+    return _enrich(wallet)
+
+
+@api_router.post("/wallet/goal")
+async def create_goal(body: SavingsGoalIn, student=Depends(get_current_student)):
+    if body.target <= 0:
+        raise HTTPException(status_code=400, detail="هدف غير صالح")
+    if not body.title.strip():
+        raise HTTPException(status_code=400, detail="عنوان الهدف مطلوب")
+    # Ensure wallet exists (auto-create on first use)
+    await _get_or_create_wallet(student)
+    goal = {
+        "id": str(uuid.uuid4()),
+        "title": body.title.strip(),
+        "target": round(float(body.target), 2),
+        "saved": 0.0,
+        "monthly_contribution": round(float(body.monthly_contribution), 2),
+        "icon": body.icon or "target",
+        "color": body.color or "#00865A",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.wallets.update_one(
+        {"student_id": student["student_id"]},
+        {"$push": {"savings_goals": goal}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return goal
+
+
+@api_router.post("/wallet/goal/{goal_id}/deposit")
+async def deposit_goal(goal_id: str, body: GoalDepositIn, student=Depends(get_current_student)):
+    if body.amount <= 0:
+        raise HTTPException(status_code=400, detail="المبلغ يجب أن يكون أكبر من صفر")
+    wallet = await _get_or_create_wallet(student)
+    if body.amount > wallet["balance"]:
+        raise HTTPException(status_code=400, detail="الرصيد غير كافٍ")
+    target_goal = next((g for g in wallet["savings_goals"] if g["id"] == goal_id), None)
+    if not target_goal:
+        raise HTTPException(status_code=404, detail="الهدف غير موجود")
+
+    new_saved = round(target_goal["saved"] + body.amount, 2)
+    new_balance = round(wallet["balance"] - body.amount, 2)
+    txn = {
+        "id": str(uuid.uuid4()),
+        "label": f"تحويل لهدف: {target_goal['title']}",
+        "category": "savings",
+        "amount": -round(float(body.amount), 2),
+        "type": "transfer",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.wallets.update_one(
+        {"student_id": student["student_id"], "savings_goals.id": goal_id},
+        {
+            "$set": {
+                "savings_goals.$.saved": new_saved,
+                "balance": new_balance,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "$push": {"transactions": {"$each": [txn], "$position": 0, "$slice": 30}},
+            "$inc": {"rewards_points": 5},
+        },
+    )
+    return {"ok": True, "goal_saved": new_saved, "balance": new_balance, "transaction": txn}
+
+
+@api_router.delete("/wallet/goal/{goal_id}")
+async def delete_goal(goal_id: str, student=Depends(get_current_student)):
+    res = await db.wallets.update_one(
+        {"student_id": student["student_id"]},
+        {"$pull": {"savings_goals": {"id": goal_id}}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.modified_count == 0:
+        raise HTTPException(status_code=404, detail="الهدف غير موجود")
+    return {"ok": True}
+
+
+@api_router.post("/wallet/coach")
+async def wallet_ai_coach(body: WalletCoachIn, student=Depends(get_current_student)):
+    wallet = await _get_or_create_wallet(student)
+    enriched = _enrich(wallet)
+    summary = enriched["summary"]
+    health = enriched["financial_health"]
+
+    budget_text = "\n".join(
+        f"- {b['name']}: أنفقت {b['spent']:.0f} من {b['limit']:.0f} ر.س"
+        for b in wallet["budget"]
+    )
+    goals_text = "\n".join(
+        f"- {g['title']}: تم ادخار {g['saved']:.0f} من {g['target']:.0f} ر.س (شهرياً {g['monthly_contribution']:.0f})"
+        for g in wallet["savings_goals"]
+    ) or "لا توجد أهداف ادخار حالياً."
+
+    user_q = (body.question or "").strip()
+    base_context = f"""بيانات الطالب المالية:
+- الرصيد المتاح: {wallet['balance']:.0f} ر.س
+- المنحة الشهرية: {wallet['monthly_scholarship']:.0f} ر.س
+- مجموع المصروفات هذا الشهر: {summary['spent']:.0f} ر.س
+- مجموع الادخار في الأهداف: {summary['saved']:.0f} ر.س
+- درجة الصحة المالية: {health['score']}/100 ({health['label']})
+
+تفصيل الميزانية:
+{budget_text}
+
+أهداف الادخار:
+{goals_text}
+"""
+
+    if user_q:
+        prompt = base_context + f"\n\nسؤال الطالب: {user_q}\n\nأجب بإجابة قصيرة عملية ومخصصة بناءً على بياناته."
+    else:
+        prompt = base_context + """
+
+اكتب نصيحة مالية أسبوعية ومخصصة بصيغة JSON صالحة فقط (بدون أي شرح خارجي):
+{
+  "summary": "ملخص حالة الطالب المالية (سطرين كحد أقصى)",
+  "wins": ["إنجاز إيجابي 1", "إنجاز 2"],
+  "improvements": ["مجال للتحسين 1", "مجال 2"],
+  "tips": [
+    {"title": "عنوان", "advice": "نصيحة محددة قابلة للتنفيذ"},
+    {"title": "...", "advice": "..."}
+  ],
+  "next_goal_suggestion": "اقتراح بهدف ادخار جديد",
+  "motivational": "رسالة قصيرة محفزة"
+}
+أعطِ 3-4 نصائح. اربط النصائح بأرقام فعلية من بياناته."""
+
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        system_msg = (
+            "أنت 'كوتش مالي ذكي' في محفظة الإنماء للطلاب. تتحدث العربية بطلاقة. "
+            "تقدم نصائح عملية ومحددة بناءً على بيانات الطالب الفعلية. "
+            "كن ودوداً، مشجعاً، وأرفق أرقاماً عند الإمكان. "
+            + ("ترد بـ JSON صالح فقط." if not user_q else "أجب بنص عربي طبيعي.")
+        )
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"nabd-wallet-{student['student_id']}-{uuid.uuid4().hex[:6]}",
+            system_message=system_msg,
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        response = await chat.send_message(UserMessage(text=prompt))
+        text = response if isinstance(response, str) else str(response)
+        if user_q:
+            return {"source": "ai", "type": "chat", "reply": text.strip()}
+        # JSON-mode weekly advice
+        import re
+        import json
+        m = re.search(r"\{[\s\S]*\}", text)
+        if not m:
+            raise ValueError("No JSON in response")
+        data = json.loads(m.group(0))
+        return {"source": "ai", "type": "advice", "data": data}
+    except Exception as e:
+        logger.error(f"Wallet coach error: {e}")
+        return {"source": "fallback", "type": "chat" if user_q else "advice", "data": _wallet_fallback(enriched), "reply": _wallet_simple_reply(user_q, enriched)}
+
+
+def _wallet_simple_reply(q, enriched):
+    if not q:
+        return ""
+    q = q.strip()
+    s = enriched["summary"]
+    if "ادخار" in q or "ادخر" in q or "حفظ" in q:
+        return f"الادخار الحالي {s['saved']:.0f} ر.س. لو خصصت 200 ر.س شهرياً، هتقدر تشتري لابتوب بـ 4500 خلال 18 شهر تقريباً."
+    if "ميزانية" in q or "أصرف" in q or "صرف" in q:
+        over = [b for b in enriched["budget"] if b["spent"] > b["limit"]]
+        if over:
+            return f"تجاوزت ميزانيتك في {over[0]['name']} بـ {over[0]['spent']-over[0]['limit']:.0f} ر.س. حاول تقلل في هذي الفئة الشهر القادم."
+        return f"ميزانيتك متوازنة: أنفقت {s['spent']:.0f} من المنحة {s['income']:.0f}."
+    return f"محفظتك في حالة {enriched['financial_health']['label']} ({enriched['financial_health']['score']}/100). اسألني عن الميزانية أو الادخار وأنا أساعدك."
+
+
+def _wallet_fallback(enriched):
+    s = enriched["summary"]
+    health = enriched["financial_health"]
+    over = [b for b in enriched["budget"] if b["spent"] > b["limit"]]
+    wins = []
+    improvements = []
+    if s["saved"] > 0:
+        wins.append(f"بدأت الادخار بـ {s['saved']:.0f} ر.س — خطوة ممتازة!")
+    if s["remaining"] > 0:
+        wins.append(f"يتبقى لديك {s['remaining']:.0f} ر.س من ميزانية الشهر.")
+    if not wins:
+        wins.append("التزامك بمتابعة محفظتك خطوة ذكية بحد ذاتها.")
+    if over:
+        improvements.append(f"تجاوزت ميزانية {over[0]['name']} — حاول تقلّلها 20% الشهر القادم.")
+    if s["saved"] / max(1, s["income"]) < 0.2:
+        improvements.append("نسبة ادخارك منخفضة، اهدف لـ 20% من المنحة شهرياً.")
+    if not improvements:
+        improvements.append("استمر على نفس الوتيرة وفكر بإضافة هدف ادخار جديد.")
+
+    return {
+        "summary": f"صحتك المالية: {health['label']} ({health['score']}/100).",
+        "wins": wins,
+        "improvements": improvements,
+        "tips": [
+            {"title": "قاعدة 50/30/20", "advice": "50% للضروريات، 30% للرغبات، 20% للادخار."},
+            {"title": "تتبع يومي", "advice": "افتح المحفظة كل يوم وراجع المعاملات لتجنّب المفاجآت."},
+            {"title": "استفد من العروض", "advice": "استخدم عروض الطلاب لخفض المصاريف الثابتة."},
+        ],
+        "next_goal_suggestion": "ابدأ بهدف 'صندوق طوارئ' بقيمة 1000 ر.س.",
+        "motivational": "كل ريال تدّخره اليوم = حرية أكبر غداً 💚",
+    }
+
+
+@api_router.get("/wallet/offers")
+async def list_offers(student=Depends(get_current_student)):
+    _ = student
+    return {"offers": STUDENT_OFFERS}
+
+
+
 
 
 app.include_router(api_router)
