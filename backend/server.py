@@ -1064,30 +1064,128 @@ def _level_from_points(points: int) -> dict:
 
 
 def _seed_wallet_for(student) -> dict:
-    """Create a deterministic-but-varied wallet for a seeded student."""
-    rng = random.Random(student["student_id"])  # deterministic per student
-    balance = round(rng.uniform(800, 3200), 2)
-    points = rng.randint(80, 700)
+    """Create a deterministic, persona-aware wallet for a seeded student."""
+    sid = student["student_id"]
+    rng = random.Random(sid)
 
-    # Transactions: last 10 of mixed categories
+    # Persona-specific defaults keyed by seeded student_id
+    personas = {
+        # سارة (Top CS student) — well-balanced, big saver
+        "S1001": {
+            "balance_range": (2400, 3200),
+            "points_range": (450, 650),
+            "samples": [
+                ("education", -149.0, "كورس Python — يوديمي"),
+                ("books", -85.0, "كتاب هياكل البيانات"),
+                ("food", -32.0, "كافيه الجامعة"),
+                ("transport", -22.0, "كريم — المختبر"),
+                ("education", -75.0, "كتاب SQL"),
+                ("entertainment", -19.0, "اشتراك Spotify Student"),
+                ("books", -42.0, "قرطاسية وأقلام"),
+                ("food", -28.5, "وجبة بين المحاضرات"),
+            ],
+            "budget": {"food": 280, "transport": 180, "education": 350, "books": 250, "entertainment": 100, "other": 150},
+            "goal": {"title": "MacBook للبرمجة", "target": 6500, "saved": 1850, "monthly": 400, "color": "#00865A"},
+        },
+        # محمد (EE struggling) — overspending, low saving
+        "S1002": {
+            "balance_range": (300, 800),
+            "points_range": (40, 120),
+            "samples": [
+                ("entertainment", -89.0, "PlayStation Store"),
+                ("food", -68.0, "ماكدونالدز"),
+                ("transport", -45.0, "أوبر — العودة المتأخرة"),
+                ("entertainment", -55.0, "تذكرة سينما + بوبكورن"),
+                ("food", -52.0, "كنتاكي"),
+                ("entertainment", -49.0, "اشتراك Netflix"),
+                ("other", -120.0, "ملابس"),
+                ("food", -38.0, "كافيه ستاربكس"),
+                ("transport", -28.0, "كريم"),
+            ],
+            "budget": {"food": 300, "transport": 200, "education": 200, "books": 100, "entertainment": 150, "other": 200},
+            "goal": {"title": "إصلاح اللاب توب", "target": 1200, "saved": 180, "monthly": 150, "color": "#f59e0b"},
+        },
+        # ريم (Business student) — moderate, balanced
+        "S1003": {
+            "balance_range": (1400, 2200),
+            "points_range": (220, 380),
+            "samples": [
+                ("education", -199.0, "Coursera — تسويق رقمي"),
+                ("books", -125.0, "كتاب Strategic Management"),
+                ("food", -45.0, "مطعم ايطالي مع زميلات"),
+                ("transport", -32.0, "أوبر للمكتبة"),
+                ("entertainment", -38.0, "اشتراك LinkedIn Premium"),
+                ("food", -28.0, "كافيه دراسة"),
+                ("books", -55.0, "تقارير حالات تسويقية"),
+                ("other", -75.0, "حقيبة لاب توب"),
+            ],
+            "budget": {"food": 350, "transport": 200, "education": 300, "books": 200, "entertainment": 120, "other": 200},
+            "goal": {"title": "حقيبة عمل + شهادة CMA", "target": 3500, "saved": 920, "monthly": 350, "color": "#6d4dff"},
+        },
+        # خالد (Civil Engineering — at risk) — financially stressed
+        "S1004": {
+            "balance_range": (120, 450),
+            "points_range": (20, 80),
+            "samples": [
+                ("food", -85.0, "وجبات سريعة متكررة"),
+                ("entertainment", -120.0, "ألعاب جوال (Top-up)"),
+                ("food", -52.0, "ماكدونالدز"),
+                ("transport", -48.0, "أوبر — تأخر للمحاضرة"),
+                ("entertainment", -75.0, "تذكرة سينما"),
+                ("other", -180.0, "إكسسوارات جوال"),
+                ("food", -42.0, "ديليفري بيتزا"),
+                ("books", -28.0, "كتاب فيزياء (متأخر)"),
+                ("transport", -35.0, "كريم"),
+            ],
+            "budget": {"food": 280, "transport": 200, "education": 250, "books": 150, "entertainment": 100, "other": 200},
+            "goal": {"title": "صندوق طوارئ", "target": 1000, "saved": 95, "monthly": 100, "color": "#ef4444"},
+        },
+        # ليان (Graphic Design — high performer) — creative spending
+        "S1005": {
+            "balance_range": (1800, 2800),
+            "points_range": (550, 720),
+            "samples": [
+                ("education", -245.0, "Adobe Creative Cloud — اشتراك"),
+                ("books", -180.0, "كتاب UI/UX Design"),
+                ("education", -159.0, "كورس Figma — Coursera"),
+                ("food", -38.0, "كافيه فني"),
+                ("entertainment", -45.0, "معرض فني"),
+                ("books", -95.0, "كتب تصميم جرافيك"),
+                ("transport", -25.0, "كريم — استوديو"),
+                ("food", -32.0, "وجبة صحية"),
+                ("other", -110.0, "أدوات رسم"),
+            ],
+            "budget": {"food": 250, "transport": 150, "education": 400, "books": 300, "entertainment": 150, "other": 250},
+            "goal": {"title": "تابلت Wacom احترافي", "target": 3800, "saved": 2200, "monthly": 450, "color": "#ec4899"},
+        },
+    }
+
+    persona = personas.get(sid, {
+        "balance_range": (800, 2500),
+        "points_range": (80, 400),
+        "samples": [
+            ("food", -32.0, "كافيه الجامعة"),
+            ("transport", -22.0, "كريم"),
+            ("education", -149.0, "دورة أونلاين"),
+            ("books", -65.0, "كتاب جامعي"),
+            ("entertainment", -38.0, "اشتراك ترفيهي"),
+            ("food", -28.0, "وجبة سريعة"),
+            ("other", -45.0, "متفرقات"),
+            ("transport", -18.0, "مواصلات"),
+        ],
+        "budget": {"food": 320, "transport": 200, "education": 250, "books": 180, "entertainment": 130, "other": 200},
+        "goal": {"title": "هدف ادخار شخصي", "target": 2500, "saved": 500, "monthly": 250, "color": "#00865A"},
+    })
+
+    balance = round(rng.uniform(*persona["balance_range"]), 2)
+    points = rng.randint(*persona["points_range"])
+
     today = datetime.now(timezone.utc)
     transactions = []
-    samples = [
-        ("food", -28.0, "كافيه الجامعة"),
-        ("food", -45.5, "مطعم البيك"),
-        ("transport", -18.0, "كريم - رحلة الكلية"),
-        ("transport", -22.0, "كريم - عودة للسكن"),
-        ("education", -149.0, "دورة بايثون - يوديمي"),
-        ("books", -65.0, "مكتبة جرير - كتاب الإحصاء"),
-        ("entertainment", -38.0, "اشتراك Spotify"),
-        ("entertainment", -55.0, "تذكرة سينما"),
-        ("other", -42.0, "بقالة سريعة"),
-        ("food", -19.0, "وجبة سريعة"),
-    ]
+    samples = list(persona["samples"])
     rng.shuffle(samples)
-    for i, (cat, amount, label) in enumerate(samples[:8]):
-        # vary amount slightly
-        adj = round(amount + rng.uniform(-5, 5), 2)
+    for i, (cat, amount, label) in enumerate(samples):
+        adj = round(amount + rng.uniform(-3, 3), 2)
         transactions.append({
             "id": str(uuid.uuid4()),
             "label": label,
@@ -1096,7 +1194,6 @@ def _seed_wallet_for(student) -> dict:
             "type": "expense",
             "created_at": (today - timedelta(days=i + 1, hours=rng.randint(0, 22))).isoformat(),
         })
-    # add the scholarship deposit
     transactions.insert(0, {
         "id": str(uuid.uuid4()),
         "label": "إيداع المنحة الشهرية",
@@ -1106,32 +1203,30 @@ def _seed_wallet_for(student) -> dict:
         "created_at": (today - timedelta(days=2)).isoformat(),
     })
 
-    # Budget per category (limit, spent computed from transactions)
     budget = []
-    defaults = {"food": 350, "transport": 220, "education": 250, "books": 150, "entertainment": 120, "other": 200}
     for c in CATEGORY_DEFS:
         spent = sum(abs(t["amount"]) for t in transactions if t["category"] == c["key"])
         budget.append({
             "key": c["key"], "name": c["name"], "icon": c["icon"], "color": c["color"],
-            "limit": defaults[c["key"]],
+            "limit": persona["budget"].get(c["key"], 200),
             "spent": round(spent, 2),
         })
 
-    # Initial savings goals (1 sample)
+    g = persona["goal"]
     goals = [{
         "id": str(uuid.uuid4()),
-        "title": "شراء لاب توب جديد",
-        "target": 4500.0,
-        "saved": round(rng.uniform(400, 1800), 2),
-        "monthly_contribution": 300.0,
+        "title": g["title"],
+        "target": float(g["target"]),
+        "saved": float(g["saved"]),
+        "monthly_contribution": float(g["monthly"]),
         "icon": "laptop",
-        "color": "#00865A",
+        "color": g["color"],
         "created_at": today.isoformat(),
     }]
 
     return {
         "id": str(uuid.uuid4()),
-        "student_id": student["student_id"],
+        "student_id": sid,
         "balance": balance,
         "monthly_scholarship": DEFAULT_SCHOLARSHIP,
         "transactions": transactions,
