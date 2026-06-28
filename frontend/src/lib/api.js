@@ -191,3 +191,24 @@ export async function fetchWalletCoach(question) {
   const { data } = await api.post("/wallet/coach", question ? { question } : {});
   return data;
 }
+
+// ---- Development Center ----
+export async function fetchDevCatalog() {
+  const { data } = await api.get("/development/catalog");
+  return data;
+}
+
+export async function toggleDevFavorite(programId) {
+  const { data } = await api.post(`/development/favorite/${programId}`);
+  return data;
+}
+
+export async function toggleDevCompleted(programId) {
+  const { data } = await api.post(`/development/complete/${programId}`);
+  return data;
+}
+
+export async function fetchDevRecommendations() {
+  const { data } = await api.post("/development/recommendations");
+  return data;
+}

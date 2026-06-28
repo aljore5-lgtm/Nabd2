@@ -26,6 +26,9 @@ export default function Landing() {
           <Link to="/wallet" className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 font-extrabold transition hover:bg-emerald-100" data-testid="nav-wallet">
             <Wallet size={14} /> محفظة الإنماء
           </Link>
+          <Link to="/development-center" className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-50 text-indigo-800 font-extrabold transition hover:bg-indigo-100" data-testid="nav-development">
+            <GraduationCap size={14} /> مركز التطوير
+          </Link>
           <Link to="/contact" className="text-[var(--nabd-text)] hover:text-[var(--nabd-primary)] transition" data-testid="nav-contact">تواصل</Link>
         </nav>
         <div className="flex items-center gap-3">

@@ -1549,6 +1549,206 @@ async def list_offers(student=Depends(get_current_student)):
 
 
 
+# ============================================================
+# 🎓 Development Center — programs catalog from leading orgs
+# ============================================================
+DEV_CATEGORIES = [
+    {"key": "ai", "name": "ذكاء اصطناعي", "color": "#6d4dff"},
+    {"key": "data", "name": "علم البيانات", "color": "#0ea5e9"},
+    {"key": "cyber", "name": "الأمن السيبراني", "color": "#ef4444"},
+    {"key": "cloud", "name": "الحوسبة السحابية", "color": "#06b6d4"},
+    {"key": "programming", "name": "البرمجة", "color": "#10b981"},
+    {"key": "business", "name": "إدارة الأعمال", "color": "#f59e0b"},
+    {"key": "design", "name": "التصميم وتجربة المستخدم", "color": "#ec4899"},
+    {"key": "leadership", "name": "القيادة وريادة الأعمال", "color": "#a855f7"},
+]
+
+DEV_PROVIDERS = [
+    {"key": "tuwaiq", "name": "أكاديمية طويق", "name_en": "Tuwaiq Academy", "color": "#003B7E", "logo": "T", "desc": "بوت كامبات ودورات مكثفة في التقنية."},
+    {"key": "misk", "name": "مؤسسة مسك", "name_en": "Misk Foundation", "color": "#00766B", "logo": "م", "desc": "برامج قيادية، منح دراسية، وريادة أعمال."},
+    {"key": "sdaia", "name": "سدايا", "name_en": "SDAIA", "color": "#1B3A6B", "logo": "S", "desc": "مبادرات الذكاء الاصطناعي والبيانات والمسابقات."},
+    {"key": "google", "name": "Google Career Certificates", "name_en": "Google", "color": "#4285F4", "logo": "G", "desc": "شهادات احترافية معترف بها عالمياً."},
+    {"key": "cisco", "name": "Cisco Networking Academy", "name_en": "Cisco", "color": "#1BA0D7", "logo": "C", "desc": "تأهيل احترافي في الشبكات والأمن."},
+    {"key": "microsoft", "name": "Microsoft Learn", "name_en": "Microsoft Learn", "color": "#0078D4", "logo": "M", "desc": "مسارات Azure، AI، تطوير برمجيات."},
+]
+
+DEV_PROGRAMS = [
+    # Tuwaiq
+    {"id": "tw-ai-bootcamp", "provider": "tuwaiq", "title": "معسكر الذكاء الاصطناعي التطبيقي", "category": "ai", "duration": "12 أسبوع", "level": "متقدم", "status": "open", "price": "مجاناً", "majors": ["علوم الحاسب", "هندسة كهربائية"], "url": "https://tuwaiq.edu.sa/"},
+    {"id": "tw-fullstack", "provider": "tuwaiq", "title": "Full-Stack Web Development", "category": "programming", "duration": "16 أسبوع", "level": "متوسط", "status": "open", "price": "مجاناً", "majors": ["علوم الحاسب"], "url": "https://tuwaiq.edu.sa/"},
+    {"id": "tw-cyber", "provider": "tuwaiq", "title": "بوت كامب الأمن السيبراني", "category": "cyber", "duration": "14 أسبوع", "level": "متقدم", "status": "soon", "price": "مجاناً", "majors": ["علوم الحاسب", "هندسة كهربائية"], "url": "https://tuwaiq.edu.sa/"},
+    {"id": "tw-data", "provider": "tuwaiq", "title": "علم البيانات وتحليلها بـ Python", "category": "data", "duration": "10 أسابيع", "level": "مبتدئ", "status": "open", "price": "مجاناً", "majors": ["علوم الحاسب", "إدارة أعمال"], "url": "https://tuwaiq.edu.sa/"},
+    # Misk
+    {"id": "misk-leaders", "provider": "misk", "title": "برنامج قادة المستقبل", "category": "leadership", "duration": "6 أشهر", "level": "متوسط", "status": "open", "price": "ممول بالكامل", "majors": ["إدارة أعمال", "علوم الحاسب", "هندسة مدنية"], "url": "https://misk.org.sa/"},
+    {"id": "misk-entrepreneur", "provider": "misk", "title": "مسرّعة مسك لرواد الأعمال", "category": "leadership", "duration": "12 أسبوع", "level": "متقدم", "status": "open", "price": "ممول", "majors": ["إدارة أعمال", "تصميم جرافيك"], "url": "https://misk.org.sa/"},
+    {"id": "misk-scholarship", "provider": "misk", "title": "منحة مسك الدراسية للماجستير", "category": "business", "duration": "2 سنة", "level": "خريج", "status": "soon", "price": "ممول بالكامل", "majors": ["إدارة أعمال", "علوم الحاسب", "هندسة كهربائية"], "url": "https://misk.org.sa/"},
+    # SDAIA
+    {"id": "sdaia-academy", "provider": "sdaia", "title": "أكاديمية سدايا للذكاء الاصطناعي", "category": "ai", "duration": "8 أسابيع", "level": "متوسط", "status": "open", "price": "مجاناً", "majors": ["علوم الحاسب", "هندسة كهربائية"], "url": "https://sdaia.gov.sa/"},
+    {"id": "sdaia-datathon", "provider": "sdaia", "title": "مسابقة Datathon الوطنية", "category": "data", "duration": "أسبوعان", "level": "متقدم", "status": "open", "price": "جوائز قيمة", "majors": ["علوم الحاسب", "إدارة أعمال"], "url": "https://sdaia.gov.sa/"},
+    {"id": "sdaia-ethics", "provider": "sdaia", "title": "أخلاقيات الذكاء الاصطناعي", "category": "ai", "duration": "3 أسابيع", "level": "مبتدئ", "status": "open", "price": "مجاناً", "majors": ["علوم الحاسب", "إدارة أعمال"], "url": "https://sdaia.gov.sa/"},
+    # Google
+    {"id": "g-data-analytics", "provider": "google", "title": "Google Data Analytics Certificate", "category": "data", "duration": "6 أشهر", "level": "مبتدئ", "status": "open", "price": "اشتراك Coursera", "majors": ["إدارة أعمال", "علوم الحاسب"], "url": "https://grow.google/"},
+    {"id": "g-it-support", "provider": "google", "title": "Google IT Support Certificate", "category": "programming", "duration": "5 أشهر", "level": "مبتدئ", "status": "open", "price": "اشتراك Coursera", "majors": ["علوم الحاسب"], "url": "https://grow.google/"},
+    {"id": "g-ux", "provider": "google", "title": "Google UX Design Certificate", "category": "design", "duration": "6 أشهر", "level": "مبتدئ", "status": "open", "price": "اشتراك Coursera", "majors": ["تصميم جرافيك", "علوم الحاسب"], "url": "https://grow.google/"},
+    {"id": "g-pm", "provider": "google", "title": "Google Project Management Certificate", "category": "business", "duration": "6 أشهر", "level": "مبتدئ", "status": "open", "price": "اشتراك Coursera", "majors": ["إدارة أعمال", "هندسة مدنية"], "url": "https://grow.google/"},
+    # Cisco
+    {"id": "cisco-ccna", "provider": "cisco", "title": "CCNA — Routing & Switching", "category": "cloud", "duration": "70 ساعة", "level": "متقدم", "status": "open", "price": "مجاناً", "majors": ["علوم الحاسب", "هندسة كهربائية"], "url": "https://www.netacad.com/"},
+    {"id": "cisco-cyber-essentials", "provider": "cisco", "title": "Cybersecurity Essentials", "category": "cyber", "duration": "30 ساعة", "level": "مبتدئ", "status": "open", "price": "مجاناً", "majors": ["علوم الحاسب"], "url": "https://www.netacad.com/"},
+    {"id": "cisco-iot", "provider": "cisco", "title": "Introduction to IoT", "category": "programming", "duration": "20 ساعة", "level": "مبتدئ", "status": "open", "price": "مجاناً", "majors": ["هندسة كهربائية", "علوم الحاسب"], "url": "https://www.netacad.com/"},
+    # Microsoft Learn
+    {"id": "ms-az900", "provider": "microsoft", "title": "Azure Fundamentals (AZ-900)", "category": "cloud", "duration": "4 أسابيع", "level": "مبتدئ", "status": "open", "price": "مجاناً", "majors": ["علوم الحاسب"], "url": "https://learn.microsoft.com/"},
+    {"id": "ms-ai900", "provider": "microsoft", "title": "Azure AI Fundamentals (AI-900)", "category": "ai", "duration": "4 أسابيع", "level": "مبتدئ", "status": "open", "price": "مجاناً", "majors": ["علوم الحاسب", "هندسة كهربائية"], "url": "https://learn.microsoft.com/"},
+    {"id": "ms-dp900", "provider": "microsoft", "title": "Azure Data Fundamentals (DP-900)", "category": "data", "duration": "4 أسابيع", "level": "مبتدئ", "status": "open", "price": "مجاناً", "majors": ["علوم الحاسب", "إدارة أعمال"], "url": "https://learn.microsoft.com/"},
+    {"id": "ms-sc900", "provider": "microsoft", "title": "Security, Compliance & Identity (SC-900)", "category": "cyber", "duration": "5 أسابيع", "level": "مبتدئ", "status": "open", "price": "مجاناً", "majors": ["علوم الحاسب"], "url": "https://learn.microsoft.com/"},
+]
+
+
+def _enrich_program(p, favorites, completed):
+    prov = next((x for x in DEV_PROVIDERS if x["key"] == p["provider"]), None)
+    cat = next((x for x in DEV_CATEGORIES if x["key"] == p["category"]), None)
+    return {
+        **p,
+        "provider_info": prov,
+        "category_info": cat,
+        "is_favorite": p["id"] in favorites,
+        "is_completed": p["id"] in completed,
+    }
+
+
+async def _get_dev_state(student) -> dict:
+    doc = await db.dev_state.find_one({"student_id": student["student_id"]}, {"_id": 0})
+    if not doc:
+        doc = {
+            "student_id": student["student_id"],
+            "favorites": [],
+            "completed": [],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.dev_state.insert_one(doc)
+        doc.pop("_id", None)
+    doc.setdefault("favorites", [])
+    doc.setdefault("completed", [])
+    return doc
+
+
+@api_router.get("/development/catalog")
+async def dev_catalog(student=Depends(get_current_student)):
+    state = await _get_dev_state(student)
+    favorites = set(state["favorites"])
+    completed = set(state["completed"])
+    items = [_enrich_program(p, favorites, completed) for p in DEV_PROGRAMS]
+    return {
+        "providers": DEV_PROVIDERS,
+        "categories": DEV_CATEGORIES,
+        "programs": items,
+        "favorites_count": len(favorites),
+        "completed_count": len(completed),
+    }
+
+
+@api_router.post("/development/favorite/{program_id}")
+async def toggle_favorite(program_id: str, student=Depends(get_current_student)):
+    if not any(p["id"] == program_id for p in DEV_PROGRAMS):
+        raise HTTPException(status_code=404, detail="Program not found")
+    state = await _get_dev_state(student)
+    favorites = set(state["favorites"])
+    if program_id in favorites:
+        favorites.discard(program_id)
+        action = "removed"
+    else:
+        favorites.add(program_id)
+        action = "added"
+    await db.dev_state.update_one(
+        {"student_id": student["student_id"]},
+        {"$set": {"favorites": list(favorites), "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return {"action": action, "favorites": list(favorites)}
+
+
+@api_router.post("/development/complete/{program_id}")
+async def mark_completed(program_id: str, student=Depends(get_current_student)):
+    if not any(p["id"] == program_id for p in DEV_PROGRAMS):
+        raise HTTPException(status_code=404, detail="Program not found")
+    state = await _get_dev_state(student)
+    completed = set(state["completed"])
+    if program_id in completed:
+        completed.discard(program_id)
+        action = "uncompleted"
+    else:
+        completed.add(program_id)
+        action = "completed"
+    await db.dev_state.update_one(
+        {"student_id": student["student_id"]},
+        {"$set": {"completed": list(completed), "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return {"action": action, "completed": list(completed)}
+
+
+@api_router.post("/development/recommendations")
+async def dev_recommendations(student=Depends(get_current_student)):
+    profile = build_profile(student)
+    state = await _get_dev_state(student)
+    matching = [p for p in DEV_PROGRAMS if profile.major in p.get("majors", [])]
+
+    prompt = f"""بيانات الطالب:
+- التخصص: {profile.major} — السنة {profile.year}
+- المعدل: {profile.gpa:.2f}/4 — مستوى المخاطرة: {profile.risk_level}
+
+البرامج المتاحة (الأنسب لتخصصه):
+{chr(10).join(f"- [{p['id']}] {p['title']} ({p['duration']}, مستوى {p['level']}, مزود {p['provider']})" for p in matching)}
+
+اختر 3-5 برامج هي الأنسب لهذا الطالب. أجب بـ JSON صالح فقط بالشكل التالي بدون أي شرح خارجي:
+{{
+  "summary": "سطر واحد يلخص توجهك",
+  "picks": [
+    {{"id": "program_id_من_القائمة_أعلاه", "why": "سبب اختيار البرنامج للطالب (سطر واحد)"}},
+    ...
+  ]
+}}"""
+
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"nabd-dev-{profile.student_id}-{uuid.uuid4().hex[:6]}",
+            system_message="أنت مستشار تطوير مسار مهني للطلاب الجامعيين في السعودية. ترد بـ JSON صالح فقط.",
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        text = await chat.send_message(UserMessage(text=prompt))
+        text = text if isinstance(text, str) else str(text)
+        import re
+        import json
+        m = re.search(r"\{[\s\S]*\}", text)
+        if not m:
+            raise ValueError("no json")
+        data = json.loads(m.group(0))
+        # Enrich each pick with full program data
+        favs = set(state["favorites"])
+        done = set(state["completed"])
+        enriched_picks = []
+        for pick in data.get("picks", [])[:5]:
+            p = next((x for x in DEV_PROGRAMS if x["id"] == pick.get("id")), None)
+            if p:
+                enriched_picks.append({**_enrich_program(p, favs, done), "why": pick.get("why", "")})
+        if enriched_picks:
+            return {"source": "ai", "summary": data.get("summary", ""), "picks": enriched_picks}
+    except Exception as e:
+        logger.error(f"Dev rec error: {e}")
+
+    # Fallback: rule-based
+    favs = set(state["favorites"])
+    done = set(state["completed"])
+    fallback_picks = [
+        {**_enrich_program(p, favs, done), "why": f"يتماشى مع تخصص {profile.major}."}
+        for p in matching[:4]
+    ]
+    return {
+        "source": "fallback",
+        "summary": f"اخترنا لك {len(fallback_picks)} برامج تناسب تخصص {profile.major}.",
+        "picks": fallback_picks,
+    }
+
+
+
 
 app.include_router(api_router)
 

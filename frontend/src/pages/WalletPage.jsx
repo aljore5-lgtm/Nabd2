@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import {
   Wallet, ArrowDownLeft, ArrowUpRight, Plus, Target, Sparkles, TrendingUp, ArrowLeft, LogOut,
-  Gift, Award, Coffee, Film, Headphones, Plane, Heart, ShoppingBag, Star, Loader2,
+  Gift, Award, Coffee, Film, Headphones, Plane, Loader2,
   Utensils, Car, GraduationCap, Book, Gamepad2, MoreHorizontal, X, Trash2, CheckCircle2,
   Lightbulb, Send, Trophy, Crown, Laptop,
 } from "lucide-react";
@@ -64,7 +64,7 @@ export default function WalletPage() {
   }
   if (!wallet) return null;
 
-  const { summary, financial_health: fh, rewards, offers, budget, transactions, savings_goals } = wallet;
+  const { summary, financial_health: fh, rewards, budget, transactions, savings_goals } = wallet;
   const tone = HEALTH_TONE[fh.tone] || HEALTH_TONE.good;
 
   const budgetChart = budget.map((b) => ({ name: b.name.split(" ")[0], spent: Math.round(b.spent), remaining: Math.max(0, Math.round(b.limit - b.spent)), color: b.color }));
@@ -533,7 +533,7 @@ export default function WalletPage() {
 
         {/* Recent Transactions */}
         <section className="wallet-card p-6 fade-up" data-testid="transactions-card">
-          <div className="font-extrabold mb-3 inline-flex items-center gap-2"><ShoppingBag size={18} className="text-emerald-600" /> آخر العمليات</div>
+          <div className="font-extrabold mb-3 inline-flex items-center gap-2"><Wallet size={18} className="text-emerald-600" /> آخر العمليات</div>
           <div className="space-y-2">
             {transactions.slice(0, 10).map((t) => {
               const Icon = CAT_ICONS[t.category] || MoreHorizontal;
@@ -585,37 +585,6 @@ export default function WalletPage() {
                 </div>
               );
             })}
-          </div>
-        </section>
-
-        {/* Student Offers */}
-        <section className="wallet-card p-7 fade-up" data-testid="offers-section">
-          <div className="mb-5">
-            <span className="chip chip-emerald"><Star size={14} /> عروض حصرية للطلاب</span>
-            <h3 className="text-2xl font-black mt-2">شركاء نبض</h3>
-            <p className="text-sm text-[var(--nabd-text-soft)] mt-1">عروض وخصومات حصرية لطلاب الجامعات.</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {offers.map((o) => (
-              <div key={o.id} className="p-5 rounded-2xl relative overflow-hidden text-white" style={{ background: `linear-gradient(135deg, ${o.color} 0%, ${o.color}dd 100%)` }} data-testid={`offer-${o.id}`}>
-                <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10" />
-                <div className="relative">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="text-xs font-bold opacity-90">{o.tag}</div>
-                      <div className="text-2xl font-black mt-1">{o.brand}</div>
-                    </div>
-                    <Heart size={18} className="opacity-80" />
-                  </div>
-                  <div className="mt-4 font-extrabold">{o.title}</div>
-                  <p className="text-xs opacity-90 mt-1">{o.desc}</p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <div className="text-3xl font-black">{o.discount}</div>
-                    <span className="px-3 py-1.5 rounded-full bg-white/20 text-xs font-bold tracking-wider">{o.code}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </section>
 

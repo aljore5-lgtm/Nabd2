@@ -104,6 +104,9 @@ export default function StudentPortal() {
           <span className="text-xs font-bold text-[var(--nabd-text-soft)] hidden md:inline mr-2">/ بوابة الطالب</span>
         </Link>
         <div className="flex items-center gap-3">
+          <Link to="/development-center" className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-white text-sm transition" style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", boxShadow: "0 6px 18px -6px rgba(79,70,229,0.5)" }} data-testid="header-development-btn">
+            <GraduationCap size={14} /> مركز التطوير
+          </Link>
           <Link to="/wallet" className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-white text-sm transition" style={{ background: "linear-gradient(135deg, #00865A 0%, #006442 100%)", boxShadow: "0 6px 18px -6px rgba(0,134,90,0.5)" }} data-testid="header-wallet-btn">
             <Wallet size={14} /> محفظتي
           </Link>

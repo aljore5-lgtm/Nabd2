@@ -9,6 +9,7 @@ import AdvisorDashboard from "@/pages/AdvisorDashboard";
 import AdvisorStudentDetail from "@/pages/AdvisorStudentDetail";
 import Contact from "@/pages/Contact";
 import WalletPage from "@/pages/WalletPage";
+import DevelopmentCenter from "@/pages/DevelopmentCenter";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="/advisor-dashboard/student/:student_id" element={<AdvisorStudentDetail />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/wallet" element={<WalletPage />} />
+          <Route path="/development-center" element={<DevelopmentCenter />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
