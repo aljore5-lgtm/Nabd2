@@ -173,15 +173,21 @@ export default function Landing() {
       {/* Contact section on landing */}
       <section id="contact" className="px-6 md:px-12 pb-24">
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-6">
-          <div className="nabd-card p-8 fade-up" data-testid="landing-developer-card">
+          <div className="nabd-card p-8 fade-up" data-testid="landing-developed-by-card">
             <div className="w-12 h-12 rounded-xl bg-[#f5f3ff] flex items-center justify-center mb-4 text-[var(--nabd-primary)]">
               <Code2 />
             </div>
-            <div className="text-xs font-bold text-[var(--nabd-text-soft)] mb-1">المطوّر</div>
-            <h3 className="text-2xl font-black mb-2">Aljory Mohammed Alaboud</h3>
-            <p className="text-[var(--nabd-text-soft)] leading-relaxed">
-              مطوّرة منصة نبض — مسؤولة عن تصميم وبناء النظام بالكامل، من النماذج التنبؤية حتى تجربة المستخدم.
-            </p>
+            <div className="text-xs font-bold text-[var(--nabd-text-soft)] mb-3">تم التطوير بواسطة · Developed By</div>
+            <ul className="space-y-3">
+              <li data-testid="landing-developer-1" className="flex flex-col">
+                <span className="text-xl font-black leading-tight">Aljory Mohamd Alaboud</span>
+                <span className="text-sm text-[var(--nabd-text-soft)] font-bold mt-0.5">الجوري محمد العبود</span>
+              </li>
+              <li data-testid="landing-developer-2" className="flex flex-col pt-3 border-t border-[var(--nabd-border)]">
+                <span className="text-xl font-black leading-tight">Hanan Aldahmashi</span>
+                <span className="text-sm text-[var(--nabd-text-soft)] font-bold mt-0.5">حنان الدهمشي</span>
+              </li>
+            </ul>
           </div>
           <div className="nabd-card p-8 fade-up delay-1" data-testid="landing-project-card">
             <div className="w-12 h-12 rounded-xl bg-[#f5f3ff] flex items-center justify-center mb-4 text-[var(--nabd-primary)]">
@@ -201,7 +207,7 @@ export default function Landing() {
 
       <footer className="px-6 md:px-12 py-8 border-t border-[var(--nabd-border)]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-sm text-[var(--nabd-text-soft)]">
-          <div>© {new Date().getFullYear()} نبض — منصة الذكاء الاصطناعي للجامعات · تطوير Aljory Mohammed Alaboud</div>
+          <div>© {new Date().getFullYear()} نبض — منصة الذكاء الاصطناعي للجامعات · تم التطوير بواسطة Aljory Mohamd Alaboud &amp; Hanan Aldahmashi</div>
           <Link to="/student-login" className="font-bold text-[var(--nabd-primary)] hover:underline" data-testid="footer-student-portal-link">
             بوابة الطالب →
           </Link>

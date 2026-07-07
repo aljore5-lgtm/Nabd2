@@ -5,7 +5,7 @@ Nabd (نبض) is an Arabic-RTL academic early-warning AI platform for universiti
 1. Student Portal — student login, profile, GPA, risk level (low/medium/high), attendance %, performance analytics, progress charts, personalized recommendations.
 2. AI Student Assistant chatbot accessible from Student Portal (with voice input).
 3. Academic Advisor Dashboard — view at-risk students, review performance, add intervention plans, track progress, manage appointments.
-4. Contact section with developer info: **Aljory Mohammed Alaboud**, project **Nabd Assistant**.
+4. Contact section with developers: **Aljory Mohamd Alaboud** & **Hanan Aldahmashi**, project **Nabd Assistant**.
 5. Engagement features: achievements/badges, peer comparison, GPA what-if calculator, appointment booking.
 
 ## User personas
@@ -44,7 +44,13 @@ Nabd (نبض) is an Arabic-RTL academic early-warning AI platform for universiti
 - 🎤 **Voice input for chatbot**: Web Speech API (`ar-SA`); mic toggle with animation; auto-fills text input; graceful fallback if unsupported.
 - Backend endpoints added: `/student/achievements`, `/student/comparison`, `/student/appointments` (POST/GET/DELETE), `/advisor/appointments` (GET/PATCH).
 
-**Session 5 — Alinma Student Wallet (current)**
+**Session 6 — "Developed By" attribution (Feb 2026)**
+- Contact page + Landing footer/contact section: replaced single-developer card with dual "Developed By · تم التطوير بواسطة" card showing both names on separate lines (EN + AR).
+  - Aljory Mohamd Alaboud — الجوري محمد العبود
+  - Hanan Aldahmashi — حنان الدهمشي
+- `/api/contact` returns `developers` array in addition to legacy `developer` string. Footer text updated on both pages.
+
+**Session 5 — Alinma Student Wallet**
 - 💚 New `/wallet` route — premium fintech UI in Alinma green palette (`#003B26` → `#00865A`), full Arabic RTL.
 - Auto-seeded wallet per student: SAR balance + monthly scholarship (990 ر.س) + 10 sample transactions + 6 budget categories.
 - 🎯 **Savings Goals** CRUD: create, deposit (atomic balance deduction + 5 reward points), delete. Estimated completion date computed from monthly contribution.

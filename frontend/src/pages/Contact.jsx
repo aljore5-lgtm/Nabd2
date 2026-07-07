@@ -51,15 +51,21 @@ export default function Contact() {
         </section>
 
         <section className="grid md:grid-cols-2 gap-6">
-          <div className="nabd-card p-8 fade-up" data-testid="developer-card">
+          <div className="nabd-card p-8 fade-up" data-testid="developed-by-card">
             <div className="w-12 h-12 rounded-xl bg-[#f5f3ff] flex items-center justify-center mb-5 text-[var(--nabd-primary)]">
               <Code2 />
             </div>
-            <div className="text-xs font-bold text-[var(--nabd-text-soft)] mb-1">المطوّر</div>
-            <h2 className="text-2xl font-black mb-2" data-testid="developer-name">Aljory Mohammed Alaboud</h2>
-            <p className="text-[var(--nabd-text-soft)] leading-relaxed">
-              مطوّرة المشروع — قامت بتصميم وتطوير منصة نبض، بما في ذلك بوابة الطالب، لوحة المرشد الأكاديمي، ومساعد الذكاء الاصطناعي.
-            </p>
+            <div className="text-xs font-bold text-[var(--nabd-text-soft)] mb-3">تم التطوير بواسطة · Developed By</div>
+            <ul className="space-y-3">
+              <li data-testid="developer-1" className="flex flex-col">
+                <span className="text-xl font-black leading-tight">Aljory Mohamd Alaboud</span>
+                <span className="text-sm text-[var(--nabd-text-soft)] font-bold mt-0.5">الجوري محمد العبود</span>
+              </li>
+              <li data-testid="developer-2" className="flex flex-col pt-3 border-t border-[var(--nabd-border)]">
+                <span className="text-xl font-black leading-tight">Hanan Aldahmashi</span>
+                <span className="text-sm text-[var(--nabd-text-soft)] font-bold mt-0.5">حنان الدهمشي</span>
+              </li>
+            </ul>
           </div>
 
           <div className="nabd-card p-8 fade-up delay-1" data-testid="project-card">
@@ -142,7 +148,7 @@ export default function Contact() {
       </main>
 
       <footer className="px-6 md:px-12 py-8 border-t border-[var(--nabd-border)] text-center text-sm text-[var(--nabd-text-soft)]">
-        © {info?.year || new Date().getFullYear()} {info?.project_name || "Nabd Assistant"} — تطوير {info?.developer || "Aljory Mohammed Alaboud"}
+        © {info?.year || new Date().getFullYear()} {info?.project_name || "Nabd Assistant"} — تم التطوير بواسطة Aljory Mohamd Alaboud &amp; Hanan Aldahmashi
       </footer>
     </div>
   );

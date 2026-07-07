@@ -756,7 +756,11 @@ async def contact_info():
     return {
         "project_name": "Nabd Assistant",
         "project_name_ar": "مساعد نبض",
-        "developer": "Aljory Mohammed Alaboud",
+        "developer": "Aljory Mohamd Alaboud & Hanan Aldahmashi",
+        "developers": [
+            {"name_en": "Aljory Mohamd Alaboud", "name_ar": "الجوري محمد العبود"},
+            {"name_en": "Hanan Aldahmashi", "name_ar": "حنان الدهمشي"},
+        ],
         "tagline": "نظام ذكاء اصطناعي للتنبؤ المبكر بنجاح الطلاب الجامعيين",
         "tagline_ar": "نظام ذكاء اصطناعي للتنبؤ المبكر بنجاح الطلاب الجامعيين",
         "email": "contact@nabd.edu",
