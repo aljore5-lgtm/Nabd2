@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   fetchWallet, createSavingsGoal, depositToGoal, deleteSavingsGoal, fetchWalletCoach, auth,
 } from "@/lib/api";
+import MicroInvestSection from "@/components/MicroInvestSection";
 import {
   PieChart, Pie, Cell, BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from "recharts";
@@ -349,6 +350,9 @@ export default function WalletPage() {
             )}
           </div>
         </section>
+
+        {/* Micro-Investment (Pulse Auto-Pilot) — round-up + AI auto-invest, integrated inside Wallet */}
+        <MicroInvestSection />
 
         {/* Smart Budget */}
         <section className="grid lg:grid-cols-2 gap-6">
