@@ -55,15 +55,13 @@ export default function Contact() {
             <div className="w-12 h-12 rounded-xl bg-[#f5f3ff] flex items-center justify-center mb-5 text-[var(--nabd-primary)]">
               <Code2 />
             </div>
-            <div className="text-xs font-bold text-[var(--nabd-text-soft)] mb-3">تم التطوير بواسطة · Developed By</div>
+            <div className="text-xs font-bold text-[var(--nabd-text-soft)] mb-4 tracking-wide">DEVELOPED BY · تم التطوير بواسطة</div>
             <ul className="space-y-3">
-              <li data-testid="developer-1" className="flex flex-col">
-                <span className="text-xl font-black leading-tight">Aljory Mohamd Alaboud</span>
-                <span className="text-sm text-[var(--nabd-text-soft)] font-bold mt-0.5">الجوري محمد العبود</span>
+              <li data-testid="developer-1" className="text-xl md:text-2xl font-black leading-tight break-words">
+                Aljory Mohamd Alaboud
               </li>
-              <li data-testid="developer-2" className="flex flex-col pt-3 border-t border-[var(--nabd-border)]">
-                <span className="text-xl font-black leading-tight">Hanan Aldahmashi</span>
-                <span className="text-sm text-[var(--nabd-text-soft)] font-bold mt-0.5">حنان الدهمشي</span>
+              <li data-testid="developer-2" className="text-xl md:text-2xl font-black leading-tight break-words pt-3 border-t border-[var(--nabd-border)]">
+                Hanan Aldahmashi
               </li>
             </ul>
           </div>
