@@ -589,7 +589,7 @@ export default function WalletPage() {
         </section>
 
         <footer className="text-center text-xs text-[var(--nabd-text-soft)] pt-6 pb-4">
-          مدعوم بـ <strong className="text-emerald-700">بنك الإنماء</strong> · مشروع نبض · تطوير Aljory Mohammed Alaboud
+          مدعوم بـ <strong className="text-emerald-700">بنك الإنماء</strong> · مشروع نبض · تطوير Aljory Mohamd Alaboud &amp; Hanan Aldahmashi
         </footer>
       </main>
     </div>
