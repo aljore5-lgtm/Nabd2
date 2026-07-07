@@ -87,7 +87,7 @@ class TestPurchase:
         assert tx["rounded"] == 14.0
         assert tx["round_up"] == 0.6
         # PURCHASE log line
-        assert any("PURCHASE" in l for l in d["ai_logs"])
+        assert any("PURCHASE" in line for line in d["ai_logs"])
 
     def test_whole_riyal_no_roundup(self, headers):
         r = requests.post(f"{API}/autopilot/purchase", headers=headers,
@@ -146,7 +146,7 @@ class TestTick:
         tx = d["transactions"][-1]
         assert tx["type"] == "autopilot"
         assert tx["amount"] == 1.5
-        assert any("AUTOPILOT-TICK" in l for l in d["ai_logs"])
+        assert any("AUTOPILOT-TICK" in line for line in d["ai_logs"])
 
     def test_tick_insufficient(self, headers):
         # enable then drain balance
@@ -167,7 +167,7 @@ class TestAIInsight:
         assert "insight" in d and isinstance(d["insight"], str) and len(d["insight"]) > 3
         assert d["source"] in ("ai", "fallback")
         assert "state" in d
-        assert any("AI-INSIGHT" in l for l in d["state"]["ai_logs"])
+        assert any("AI-INSIGHT" in line for line in d["state"]["ai_logs"])
 
 
 # ---------------- Reset ----------------
