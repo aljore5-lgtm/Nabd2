@@ -10,6 +10,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
+import math
 import bcrypt
 import jwt
 from datetime import datetime, timezone, timedelta
@@ -1750,6 +1751,272 @@ async def dev_recommendations(student=Depends(get_current_student)):
         "summary": f"اخترنا لك {len(fallback_picks)} برامج تناسب تخصص {profile.major}.",
         "picks": fallback_picks,
     }
+
+# ============================================================
+# Pulse Auto-Pilot — Round-Up Investing & AI Auto-Invest
+# ============================================================
+AUTOPILOT_STARTING_BALANCE = 1000.0
+AUTOPILOT_STARTING_INVESTMENT = 0.0
+AUTOPILOT_MIN_DAILY = 0.25
+AUTOPILOT_MAX_DAILY = 3.0
+
+
+def _autopilot_now_hms() -> str:
+    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+
+
+def _autopilot_fresh_state(student_id: str) -> dict:
+    now = datetime.now(timezone.utc).isoformat()
+    return {
+        "student_id": student_id,
+        "balance": AUTOPILOT_STARTING_BALANCE,
+        "investment_wallet": AUTOPILOT_STARTING_INVESTMENT,
+        "autopilot_enabled": False,
+        "autopilot_daily_amount": 1.0,
+        "total_rounded_up": 0.0,
+        "total_autopilot_invested": 0.0,
+        "purchases_count": 0,
+        "autopilot_ticks_count": 0,
+        "transactions": [],
+        "ai_logs": [
+            f"[{_autopilot_now_hms()}] SYSTEM :: Pulse Auto-Pilot initialised • balance=1000.00 SAR • investment=0.00 SAR",
+            f"[{_autopilot_now_hms()}] SYSTEM :: Round-Up engine ONLINE • Auto-Pilot STANDBY",
+        ],
+        "created_at": now,
+        "updated_at": now,
+    }
+
+
+async def _autopilot_get_or_create(student_id: str) -> dict:
+    doc = await db.pulse_autopilot.find_one({"student_id": student_id}, {"_id": 0})
+    if not doc:
+        doc = _autopilot_fresh_state(student_id)
+        await db.pulse_autopilot.insert_one(dict(doc))
+        doc.pop("_id", None)
+    return doc
+
+
+def _round2(x: float) -> float:
+    return round(float(x) + 1e-9, 2)
+
+
+class AutopilotPurchaseIn(BaseModel):
+    amount: float = Field(..., gt=0, le=10000)
+    merchant: Optional[str] = "متجر عام"
+    category: Optional[str] = "عام"
+
+
+class AutopilotSettingsIn(BaseModel):
+    autopilot_enabled: bool
+    autopilot_daily_amount: float = Field(..., ge=AUTOPILOT_MIN_DAILY, le=AUTOPILOT_MAX_DAILY)
+
+
+@api_router.get("/autopilot/me")
+async def autopilot_me(student=Depends(get_current_student)):
+    return await _autopilot_get_or_create(student["student_id"])
+
+
+@api_router.post("/autopilot/reset")
+async def autopilot_reset(student=Depends(get_current_student)):
+    sid = student["student_id"]
+    doc = _autopilot_fresh_state(sid)
+    await db.pulse_autopilot.replace_one({"student_id": sid}, dict(doc), upsert=True)
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.post("/autopilot/purchase")
+async def autopilot_purchase(body: AutopilotPurchaseIn, student=Depends(get_current_student)):
+    sid = student["student_id"]
+    doc = await _autopilot_get_or_create(sid)
+
+    amount = _round2(body.amount)
+    floor_amt = math.floor(amount)
+    if abs(amount - floor_amt) < 0.005:
+        rounded = amount
+        round_up = 0.0
+    else:
+        rounded = float(math.ceil(amount))
+        round_up = _round2(rounded - amount)
+
+    if doc["balance"] + 1e-6 < rounded:
+        raise HTTPException(status_code=400, detail="الرصيد غير كافٍ لإتمام العملية")
+
+    new_balance = _round2(doc["balance"] - rounded)
+    new_investment = _round2(doc["investment_wallet"] + round_up)
+
+    tx = {
+        "id": str(uuid.uuid4()),
+        "type": "purchase",
+        "merchant": body.merchant or "متجر عام",
+        "category": body.category or "عام",
+        "amount": amount,
+        "rounded": _round2(rounded),
+        "round_up": round_up,
+        "balance_after": new_balance,
+        "investment_after": new_investment,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    log_line = (
+        f"[{_autopilot_now_hms()}] PURCHASE :: {tx['merchant']} • "
+        f"{amount:.2f} -> rounded {tx['rounded']:.2f} • invested +{round_up:.2f} SAR • bal={new_balance:.2f}"
+    )
+
+    await db.pulse_autopilot.update_one(
+        {"student_id": sid},
+        {
+            "$set": {
+                "balance": new_balance,
+                "investment_wallet": new_investment,
+                "total_rounded_up": _round2(doc.get("total_rounded_up", 0.0) + round_up),
+                "purchases_count": int(doc.get("purchases_count", 0)) + 1,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "$push": {
+                "transactions": {"$each": [tx], "$slice": -100},
+                "ai_logs": {"$each": [log_line], "$slice": -80},
+            },
+        },
+    )
+    return await _autopilot_get_or_create(sid)
+
+
+@api_router.post("/autopilot/settings")
+async def autopilot_update_settings(body: AutopilotSettingsIn, student=Depends(get_current_student)):
+    sid = student["student_id"]
+    await _autopilot_get_or_create(sid)
+    daily = _round2(body.autopilot_daily_amount)
+    log_line = (
+        f"[{_autopilot_now_hms()}] AUTOPILOT :: {'ENABLED' if body.autopilot_enabled else 'DISABLED'} • "
+        f"daily_target={daily:.2f} SAR/day"
+    )
+    await db.pulse_autopilot.update_one(
+        {"student_id": sid},
+        {
+            "$set": {
+                "autopilot_enabled": bool(body.autopilot_enabled),
+                "autopilot_daily_amount": daily,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "$push": {"ai_logs": {"$each": [log_line], "$slice": -80}},
+        },
+    )
+    return await _autopilot_get_or_create(sid)
+
+
+@api_router.post("/autopilot/tick")
+async def autopilot_tick(student=Depends(get_current_student)):
+    """Simulate a single daily auto-invest run."""
+    sid = student["student_id"]
+    doc = await _autopilot_get_or_create(sid)
+    if not doc.get("autopilot_enabled"):
+        raise HTTPException(status_code=400, detail="الطيار الآلي غير مفعّل")
+    amt = _round2(doc.get("autopilot_daily_amount", 1.0))
+    if doc["balance"] + 1e-6 < amt:
+        raise HTTPException(status_code=400, detail="الرصيد غير كافٍ للاستثمار التلقائي")
+
+    new_balance = _round2(doc["balance"] - amt)
+    new_investment = _round2(doc["investment_wallet"] + amt)
+    tx = {
+        "id": str(uuid.uuid4()),
+        "type": "autopilot",
+        "merchant": "Pulse Auto-Pilot",
+        "category": "استثمار تلقائي",
+        "amount": amt,
+        "rounded": amt,
+        "round_up": amt,
+        "balance_after": new_balance,
+        "investment_after": new_investment,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    log_line = (
+        f"[{_autopilot_now_hms()}] AUTOPILOT-TICK :: transferred {amt:.2f} SAR -> investment • "
+        f"bal={new_balance:.2f} • inv={new_investment:.2f}"
+    )
+    await db.pulse_autopilot.update_one(
+        {"student_id": sid},
+        {
+            "$set": {
+                "balance": new_balance,
+                "investment_wallet": new_investment,
+                "total_autopilot_invested": _round2(doc.get("total_autopilot_invested", 0.0) + amt),
+                "autopilot_ticks_count": int(doc.get("autopilot_ticks_count", 0)) + 1,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "$push": {
+                "transactions": {"$each": [tx], "$slice": -100},
+                "ai_logs": {"$each": [log_line], "$slice": -80},
+            },
+        },
+    )
+    return await _autopilot_get_or_create(sid)
+
+
+def _autopilot_fallback_insight(doc: dict) -> str:
+    inv = doc.get("investment_wallet", 0.0)
+    purchases = doc.get("purchases_count", 0)
+    enabled = doc.get("autopilot_enabled", False)
+    daily = doc.get("autopilot_daily_amount", 0.0)
+    if inv < 1:
+        return "ابدأ بمحاكاة عملية شراء واحدة لترى قوة التقريب — كل هللة تُستثمر تلقائياً"
+    if inv < 10:
+        return f"جمّعت {inv:.2f} ر.س من {purchases} عملية. بمعدلك الحالي ستصل إلى 30 ر.س خلال شهر"
+    if not enabled:
+        return f"لديك {inv:.2f} ر.س من التقريب فقط. فعّل الطيار الآلي لمضاعفة النمو تلقائياً"
+    projected = inv + (daily * 30)
+    return f"طيار مفعّل بـ {daily:.2f} ر.س/يوم. توقّع {projected:.2f} ر.س بعد 30 يوماً بمعدلك الحالي"
+
+
+@api_router.post("/autopilot/ai-insight")
+async def autopilot_ai_insight(student=Depends(get_current_student)):
+    sid = student["student_id"]
+    doc = await _autopilot_get_or_create(sid)
+    inv = doc.get("investment_wallet", 0.0)
+    rounded = doc.get("total_rounded_up", 0.0)
+    purchases = doc.get("purchases_count", 0)
+    enabled = doc.get("autopilot_enabled", False)
+    daily = doc.get("autopilot_daily_amount", 0.0)
+    balance = doc.get("balance", 0.0)
+
+    insight = None
+    source = "fallback"
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"autopilot-{sid}",
+            system_message=(
+                "أنت مستشار استثمار طلابي عربي واقعي ومتحمس. ترد بجملة واحدة قصيرة "
+                "(أقل من 25 كلمة) بأسلوب احترافي وبدون إيموجي زائد. لا تستخدم markdown."
+            ),
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        prompt = (
+            f"حالة الطالب المالية: الرصيد={balance:.2f} ر.س، محفظة الاستثمار={inv:.2f} ر.س، "
+            f"مجموع التقريب={rounded:.2f} ر.س، عدد المشتريات={purchases}، "
+            f"الطيار الآلي {'مفعّل' if enabled else 'متوقف'} عند {daily:.2f} ر.س/يوم. "
+            "أعطِ رؤية استثمارية قصيرة تُعرض في طرفية مالية مباشرة."
+        )
+        r = await chat.send_message(UserMessage(text=prompt))
+        text = str(r) if not isinstance(r, str) else r
+        insight = text.strip()
+        if len(insight) > 220:
+            insight = insight[:217] + "…"
+        source = "ai"
+    except Exception as e:
+        logger.error(f"Auto-Pilot AI insight error: {e}")
+
+    if not insight:
+        insight = _autopilot_fallback_insight(doc)
+
+    log_line = f"[{_autopilot_now_hms()}] AI-INSIGHT :: {insight}"
+    await db.pulse_autopilot.update_one(
+        {"student_id": sid},
+        {"$push": {"ai_logs": {"$each": [log_line], "$slice": -80}}},
+    )
+    state = await _autopilot_get_or_create(sid)
+    return {"insight": insight, "source": source, "state": state}
+
+
 
 
 

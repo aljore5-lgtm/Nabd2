@@ -212,3 +212,34 @@ export async function fetchDevRecommendations() {
   const { data } = await api.post("/development/recommendations");
   return data;
 }
+
+// ---- Pulse Auto-Pilot ----
+export async function fetchAutopilot() {
+  const { data } = await api.get("/autopilot/me");
+  return data;
+}
+
+export async function submitAutopilotPurchase(payload) {
+  const { data } = await api.post("/autopilot/purchase", payload);
+  return data;
+}
+
+export async function updateAutopilotSettings(payload) {
+  const { data } = await api.post("/autopilot/settings", payload);
+  return data;
+}
+
+export async function runAutopilotTick() {
+  const { data } = await api.post("/autopilot/tick");
+  return data;
+}
+
+export async function resetAutopilot() {
+  const { data } = await api.post("/autopilot/reset");
+  return data;
+}
+
+export async function fetchAutopilotInsight() {
+  const { data } = await api.post("/autopilot/ai-insight");
+  return data;
+}

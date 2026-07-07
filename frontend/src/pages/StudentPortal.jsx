@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import {
   GraduationCap, LogOut, Sparkles, TrendingUp, TrendingDown, Calendar, BookOpen,
-  Target, Award, AlertTriangle, CheckCircle2, Brain, RefreshCw, Loader2, Clock, Mail, User, ClipboardList, Wallet,
+  Target, Award, AlertTriangle, CheckCircle2, Brain, RefreshCw, Loader2, Clock, Mail, User, ClipboardList, Wallet, Zap,
 } from "lucide-react";
 
 const riskTheme = {
@@ -104,6 +104,9 @@ export default function StudentPortal() {
           <span className="text-xs font-bold text-[var(--nabd-text-soft)] hidden md:inline mr-2">/ بوابة الطالب</span>
         </Link>
         <div className="flex items-center gap-3">
+          <Link to="/auto-pilot" className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-white text-sm transition" style={{ background: "linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%)", boxShadow: "0 6px 18px -6px rgba(139,92,246,0.5)" }} data-testid="header-autopilot-btn">
+            <Zap size={14} /> Auto-Pilot
+          </Link>
           <Link to="/development-center" className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-white text-sm transition" style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", boxShadow: "0 6px 18px -6px rgba(79,70,229,0.5)" }} data-testid="header-development-btn">
             <GraduationCap size={14} /> مركز التطوير
           </Link>

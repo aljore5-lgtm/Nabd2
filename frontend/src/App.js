@@ -10,6 +10,7 @@ import AdvisorStudentDetail from "@/pages/AdvisorStudentDetail";
 import Contact from "@/pages/Contact";
 import WalletPage from "@/pages/WalletPage";
 import DevelopmentCenter from "@/pages/DevelopmentCenter";
+import AutoPilotPage from "@/pages/AutoPilotPage";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/development-center" element={<DevelopmentCenter />} />
+          <Route path="/auto-pilot" element={<AutoPilotPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
