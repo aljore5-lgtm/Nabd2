@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { GraduationCap, Sparkles, ShieldCheck, ChartLine, Mic, ArrowLeft, LogIn, User, Mail, Code2, Bot, Wallet } from "lucide-react";
+import { GraduationCap, Sparkles, ShieldCheck, ChartLine, Mic, ArrowLeft, LogIn, User, Mail, Code2, Bot, Wallet, Handshake } from "lucide-react";
 
 const sampleStudents = [
   { initial: "س", name: "سارة العتيبي", risk: 12, color: "var(--nabd-success)" },
@@ -28,6 +28,9 @@ export default function Landing() {
           </Link>
           <Link to="/development-center" className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-50 text-indigo-800 font-extrabold transition hover:bg-indigo-100" data-testid="nav-development">
             <GraduationCap size={14} /> مركز التطوير
+          </Link>
+          <Link to="/alinma-sponsorship" className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 font-extrabold transition hover:bg-emerald-100" data-testid="nav-alinma-sponsorship">
+            <Handshake size={14} /> رعاية الإنماء
           </Link>
           <Link to="/contact" className="text-[var(--nabd-text)] hover:text-[var(--nabd-primary)] transition" data-testid="nav-contact">تواصل</Link>
         </nav>

@@ -11,6 +11,7 @@ import Contact from "@/pages/Contact";
 import WalletPage from "@/pages/WalletPage";
 import DevelopmentCenter from "@/pages/DevelopmentCenter";
 import AutoPilotPage from "@/pages/AutoPilotPage";
+import AlinmaSponsorship from "@/pages/AlinmaSponsorship";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/development-center" element={<DevelopmentCenter />} />
           <Route path="/auto-pilot" element={<AutoPilotPage />} />
+          <Route path="/alinma-sponsorship" element={<AlinmaSponsorship />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
